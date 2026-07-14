@@ -382,8 +382,8 @@ tr.subtot td{background:#0c2033;font-weight:700}
       <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
         <div class="kpi cost"><div class="lab">Costo total</div><div class="val" id="r_cost">–</div></div>
         <div class="kpi good"><div class="lab">Precio total</div><div class="val" id="r_price">–</div></div>
-        <div class="kpi acc"><div class="lab">Utilidad</div><div class="val" id="r_profit">–</div></div>
-        <div class="kpi"><div class="lab">Margen global</div><div class="val" id="r_margin">–</div></div>
+        <div class="kpi acc"><div class="lab">Utilidad neta</div><div class="val" id="r_profit">–</div></div>
+        <div class="kpi"><div class="lab">Margen Total</div><div class="val" id="r_margin">–</div></div>
       </div>
       <table style="margin-top:14px">
         <thead><tr><th class="l">Concepto</th><th>Costo</th><th>Precio</th><th>Utilidad</th><th>Margen</th></tr></thead>
@@ -401,6 +401,18 @@ tr.subtot td{background:#0c2033;font-weight:700}
       <div class="hint">Lo que captures aquí se refleja en la cotización (igual que la hoja Print del Excel).</div>
       <div style="margin-bottom:14px"><label class="f">Notas</label><textarea id="c_notas" class="ta" rows="2"></textarea></div>
       <div><label class="f">Condiciones comerciales</label><textarea id="c_cond" class="ta" rows="16" style="line-height:1.5"></textarea></div>
+    </div>
+    <div class="card">
+      <h2>Comisiones/Bolsa/Eventos</h2>
+      <div class="hint">Montos que se <b>restan de la Utilidad</b> y afectan directamente el <b>Margen Total</b> (Resumen financiero). No se suman al precio de la cotización.</div>
+      <div style="overflow-x:auto">
+        <table id="comis_table">
+          <thead><tr><th class="fit">Partida</th><th class="l">Descripción</th><th class="fit">Cantidad</th><th class="fit nw">Precio Total</th><th class="l">Notas</th><th></th></tr></thead>
+          <tbody id="comis_body"></tbody>
+          <tfoot><tr class="subtot"><td class="l" colspan="3">Total Comisiones/Bolsa/Eventos</td><td class="nw" id="comis_total">0.00</td><td colspan="2"></td></tr></tfoot>
+        </table>
+      </div>
+      <button class="btn sec" style="margin-top:8px" onclick="addComis()">+ Agregar línea</button>
     </div>
   </section>
 
@@ -587,7 +599,7 @@ function defaultState(){
   st.sa.onsite=[{r:84,d:'Recurso 1',cant:0,costo:0,carga:0.42,margin:0.4,meses:12},{r:85,d:'Recurso 2',cant:0,costo:0,carga:0.42,margin:0.4,meses:12},{r:86,d:'Recurso 3',cant:0,costo:0,carga:0.42,margin:0.4,meses:12}];
   for(let i=0;i<21;i++) st.mat.rows.push({prov:i===0?'INGRAM':'',marca:i===0?'Cisco':'',item:'',sku:'',desc:'',pl:0,qty:0,disc:0.15,margin:0.15});
   for(let i=0;i<19;i++) st.con.rows.push({prov:i===0?'INGRAM':'',marca:i===0?'Cisco':'',item:'',sku:'',desc:'',pl:0,qty:0,disc:0.15,margin:0.2});
-  st.comercial={notas:'',condiciones:DEFAULT_CONDICIONES};
+  st.comercial={notas:'',condiciones:DEFAULT_CONDICIONES,comisiones:[{partida:'1',desc:'',cant:1,monto:0,nota:''}]};
   // ---- Datos de MUESTRA (para visualizar la cotización sin recapturar) ----
   st.proyecto.empresa='BBVA'; st.proyecto.contacto='Luis Octavio Rubio';
   st.proyecto.oportunidad='Renovación LAN CPD'; st.proyecto.crm='OPP-2026-014';
@@ -793,6 +805,12 @@ function compute(){
   ];
   const totCost=streams.reduce((a,s)=>a+s.cost,0), totPrice=streams.reduce((a,s)=>a+s.price,0);
   R.total={streams,cost:totCost,price:totPrice,profit:totPrice-totCost,margin:totPrice?((totPrice-totCost)/totPrice):0};
+  /* Comisiones/Bolsa/Eventos: se restan de la Utilidad y afectan el Margen Total */
+  const comis=((S.comercial&&S.comercial.comisiones)?S.comercial.comisiones:[]).reduce((a,rr)=>a+num(rr.monto),0);
+  R.comis=comis;
+  R.total.comis=comis;
+  R.total.profitNet=R.total.profit-comis;
+  R.total.marginNet=R.total.price?(R.total.profitNet/R.total.price):0;
   return R;
 }
 
@@ -806,10 +824,39 @@ function renderResults(){
   renderBOMtable('mat');
   renderBOMtable('con');
   bindBOM2();
+  renderComis();
   renderResumen();
   renderQuote();
   growAll();
 }
+function renderComis(){
+  const R=LAST;
+  const cb=$('comis_body'); if(!cb)return; cb.innerHTML='';
+  const rows=(S.comercial&&S.comercial.comisiones)?S.comercial.comisiones:[];
+  rows.forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-comis="${i}" data-k="partida" value="${esc(r.partida||'')}"></td>
+      <td class="l"><textarea class="ta" rows="1" data-comis="${i}" data-k="desc" style="width:100%">${esc(r.desc||'')}</textarea></td>
+      <td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-comis="${i}" data-k="cant" value="${r.cant}"></td>
+      <td class="fit" style="text-align:center"><input class="numw" type="text" inputmode="decimal" data-comis="${i}" data-k="monto" value="${n2(r.monto)}"></td>
+      <td class="l"><textarea class="ta" rows="1" data-comis="${i}" data-k="nota" style="width:100%">${esc(r.nota||'')}</textarea></td>
+      <td><button class="mini del" data-delcomis="${i}">✕</button></td>`;
+    cb.appendChild(tr);
+  });
+  $('comis_total').textContent=n2((R&&R.comis!=null)?R.comis:0);
+  bindComis();
+}
+function bindComis(){
+  document.querySelectorAll('[data-comis]').forEach(el=>{el.oninput=()=>{const i=+el.dataset.comis,k=el.dataset.k;
+    if(!S.comercial.comisiones[i])return;
+    if(k==='desc'||k==='nota'){S.comercial.comisiones[i][k]=el.value;autoGrow(el);}
+    else if(k==='partida'){S.comercial.comisiones[i].partida=el.value;}
+    else {S.comercial.comisiones[i][k]=num(el.value);recompute();}
+  };});
+  document.querySelectorAll('[data-delcomis]').forEach(el=>{el.onclick=()=>{S.comercial.comisiones.splice(+el.dataset.delcomis,1);recompute();};});
+  document.querySelectorAll('#comis_body input.numw').forEach(el=>{sizeMoney(el);el.onfocus=()=>{const v=num(el.value);el.value=(v===0?'':String(v));sizeMoney(el);};el.onblur=()=>{el.value=n2(num(el.value));sizeMoney(el);};});
+}
+function addComis(){if(!S.comercial)S.comercial={notas:'',condiciones:'',comisiones:[]};if(!S.comercial.comisiones)S.comercial.comisiones=[];S.comercial.comisiones.push({partida:'',desc:'',cant:1,monto:0,nota:''});recompute();}
 
 function renderIng(){
   const R=LAST,cur=S.ing.moneda,marg=num(S.ing.margin);
@@ -1115,9 +1162,12 @@ function renderResumen(){
     tr.innerHTML=`<td class="l">${s.k}</td><td class="cost">${money(s.cost,cc)}</td><td class="calc">${money(s.price,cc)}</td><td>${money(util,cc)}</td><td>${pct(m)}</td>`;
     rb.appendChild(tr);
   });
-  $('r_foot').innerHTML=`<tr class="subtot"><td class="l">TOTAL</td><td>${money(R.total.cost)}</td><td>${money(R.total.price)}</td><td>${money(R.total.profit)}</td><td>${pct(R.total.margin)}</td></tr>`;
+  let foot=`<tr class="subtot"><td class="l">TOTAL</td><td>${money(R.total.cost)}</td><td>${money(R.total.price)}</td><td>${money(R.total.profit)}</td><td>${pct(R.total.margin)}</td></tr>`;
+  foot+=`<tr><td class="l">Comisiones/Bolsa/Eventos</td><td></td><td></td><td style="color:#c0392b">-${money(R.comis||0)}</td><td></td></tr>`;
+  foot+=`<tr class="subtot"><td class="l">Utilidad neta / Margen Total</td><td></td><td></td><td>${money(R.total.profitNet)}</td><td>${pct(R.total.marginNet)}</td></tr>`;
+  $('r_foot').innerHTML=foot;
   $('r_cost').textContent=money(R.total.cost);$('r_price').textContent=money(R.total.price);
-  $('r_profit').textContent=money(R.total.profit);$('r_margin').textContent=pct(R.total.margin);
+  $('r_profit').textContent=money(R.total.profitNet);$('r_margin').textContent=pct(R.total.marginNet);
 }
 
 /* ============================ QUOTE / PDF ============================ */
@@ -1324,6 +1374,10 @@ async function exportExcel(){
     streamRows.forEach((_,i)=>{rf.getCell(rr-streamRows.length+i,5).numFmt='0.00%';});
     const tr2=rf.getRow(rr);tr2.getCell(1).value='TOTAL';tr2.getCell(2).value=R.total.cost;tr2.getCell(3).value=R.total.price;tr2.getCell(4).value=R.total.profit;tr2.getCell(5).value=R.total.margin;
     [1,2,3,4,5].forEach(ci=>{const c=tr2.getCell(ci);c.font={bold:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:TOTF}};c.border=B;if(ci>=2&&ci<=4){c.numFmt=MONEY;c.alignment={horizontal:'right'};}if(ci===5){c.numFmt='0.00%';c.alignment={horizontal:'right'};}});
+    let rcm=rr+1;
+    const cmr=rf.getRow(rcm);cmr.getCell(1).value='Comisiones/Bolsa/Eventos';cmr.getCell(4).value=-(R.comis||0);cmr.getCell(4).numFmt=MONEY;cmr.getCell(4).alignment={horizontal:'right'};cmr.getCell(4).font={color:{argb:'FFC0392B'}};[1,2,3,4,5].forEach(ci=>cmr.getCell(ci).border=B);rcm++;
+    const nmr=rf.getRow(rcm);nmr.getCell(1).value='Utilidad neta / Margen Total';nmr.getCell(4).value=R.total.profitNet;nmr.getCell(5).value=R.total.marginNet;
+    [1,2,3,4,5].forEach(ci=>{const c=nmr.getCell(ci);c.font={bold:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:TOTF}};c.border=B;if(ci===4){c.numFmt=MONEY;c.alignment={horizontal:'right'};}if(ci===5){c.numFmt='0.00%';c.alignment={horizontal:'right'};}});
 
     /* ---- Hoja Ingeniería ---- */
     const ing=wb.addWorksheet('Calculadora Ingeniería',{views:[{showGridLines:false}]});
