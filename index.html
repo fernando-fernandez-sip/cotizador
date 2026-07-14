@@ -1773,7 +1773,7 @@ function saveProject(){
 
 /* ===== Repositorio M365 (SharePoint vía Microsoft Graph / Entra ID) ===== */
 const GRAPH_KEY='sip_graph_cfg';
-const DEFAULT_GRAPH_CFG={clientId:'301142e3-19ee-4d69-9dd9-8e15e564d922',tenantId:'7e4245e5-225d-4ad0-9cf3-276fccc694c15',host:'sipnologysacv.sharepoint.com',sitePath:'/sites/Cotizador',library:'Cotizaciones'};
+const DEFAULT_GRAPH_CFG={clientId:'301142e3-19ee-4d69-9dd9-8e15e564d922',tenantId:'7e4245e5-225d-4ad0-9cf3-276fcc694c15',host:'sipnologysacv.sharepoint.com',sitePath:'/sites/Cotizador',library:'Cotizaciones'};
 let _msalApp=null;
 function getGraphCfg(){try{const s=JSON.parse(localStorage.getItem(GRAPH_KEY)||'null');return (s&&s.clientId)?s:DEFAULT_GRAPH_CFG;}catch(e){return DEFAULT_GRAPH_CFG;}}
 function repoConfig(){
