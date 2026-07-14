@@ -1762,7 +1762,9 @@ function costeoBaseName(){
   const clean=s=>String(s||'').replace(/[\\/:*?"<>|]/g,'').replace(/\s+/g,' ').trim();
   const cli=clean(S.proyecto.empresa)||'Sin cliente';
   const opp=clean(S.proyecto.oportunidad)||'Sin oportunidad';
-  return `Costeo ${cli} - ${opp}`;
+  const f=String(S.proyecto.fecha||''),m=f.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const fecha=m?(m[3]+'-'+m[2]+'-'+m[1]):'';
+  return `Costeo ${cli} - ${opp}`+(fecha?` - ${fecha}`:'');
 }
 function saveProject(){
   syncFromInputs();
