@@ -17,9 +17,9 @@
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:13px}
 header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,#0f1e3d,#0f172a);border-bottom:1px solid var(--line);padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-header h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.3px}
+header h1{font-size:26px;margin:0;font-weight:800;letter-spacing:.3px;color:#E8632A}
 header .sub{color:var(--mut);font-size:11px}
-.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;flex:1 1 100%}
 .tab{background:var(--chip);border:1px solid var(--line);color:var(--mut);padding:6px 12px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12px}
 .tab.active{background:var(--acc);color:#fff;border-color:var(--acc)}
 .wrap{max-width:1250px;margin:0 auto;padding:16px}
@@ -77,6 +77,8 @@ tr.subtot td{background:#0c2033;font-weight:700}
 .kpi .val{font-size:18px;font-weight:700;margin-top:3px;font-variant-numeric:tabular-nums}
 .kpi.good .val{color:var(--acc2)} .kpi.cost .val{color:#f0b45a} .kpi.acc .val{color:#60a5fa}
 .btn{background:var(--acc);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:12px;cursor:pointer}
+.vbtn{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;line-height:1.15;font-size:10.5px;text-align:center;white-space:nowrap;min-width:58px;padding:7px 10px}
+.vbtn .bic{font-size:16px;line-height:1}
 .btn.sec{background:var(--chip);border:1px solid var(--line);color:var(--ink)}
 .btn.gr{background:var(--acc2)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -116,24 +118,23 @@ tr.subtot td{background:#0c2033;font-weight:700}
 <header>
   <div>
     <h1>Cotizador · Sipnology</h1>
-    <div class="sub">Captura de proyecto · resultados en vivo · exporta Excel llenado + cotización PDF</div>
+    <div class="sub">Cotizador de proyectos de ingeniería, servicios administrados y suministro</div>
   </div>
   <div class="tabs" id="tabs"></div>
 </header>
 
 <div class="wrap">
-  <div class="row" style="margin-bottom:12px">
-    <button class="btn sec" onclick="saveProject()">💾 Guardar proyecto (.json)</button>
-    <label class="btn sec" style="cursor:pointer">📂 Abrir proyecto<input type="file" accept=".json" style="display:none" onchange="loadProject(event)"></label>
-    <button class="btn sec" onclick="newProject()">✨ Nuevo</button>
-    <button class="btn sec" onclick="repoSave()">☁️ Guardar en repositorio</button>
-    <button class="btn sec" onclick="repoConfig()" title="Configurar repositorio M365">⚙️</button>
-    <div class="right row">
-      <button type="button" class="btn" onclick="toggleCalc()">🧮 Calculadora</button>
-      <button class="btn gr" onclick="exportExcel()">⬇️ Descargar Excel</button>
-      <button class="btn" onclick="saveBase()">💾 Guardar como base</button>
-      <button class="btn" onclick="resetBase()">↺ Restablecer</button>
-    </div>
+  <div class="row" style="margin-bottom:12px;flex-wrap:nowrap;gap:8px;overflow-x:auto;justify-content:center">
+    <button class="btn sec vbtn" onclick="newProject()"><span class="bic">✨</span><span>Nuevo</span></button>
+    <label class="btn sec vbtn" style="cursor:pointer"><span class="bic">📂</span><span>Abrir (local)</span><input type="file" accept=".json" style="display:none" onchange="loadProject(event)"></label>
+    <button class="btn sec vbtn" onclick="repoOpen()"><span class="bic">☁️</span><span>Abrir del repositorio</span></button>
+    <button class="btn sec vbtn" onclick="saveProject()"><span class="bic">💾</span><span>Guardar (local)</span></button>
+    <button class="btn sec vbtn" onclick="repoSave()"><span class="bic">☁️</span><span>Guardar en repositorio</span></button>
+    <button class="btn sec vbtn" onclick="repoConfig()" title="Configurar repositorio M365"><span class="bic">⚙️</span><span>Config</span></button>
+    <button type="button" class="btn vbtn" onclick="toggleCalc()"><span class="bic">🧮</span><span>Calculadora</span></button>
+    <button class="btn gr vbtn" onclick="exportExcel()"><span class="bic">⬇️</span><span>Descargar Excel</span></button>
+    <button class="btn vbtn" onclick="saveBase()"><span class="bic">💾</span><span>Guardar como base</span></button>
+    <button class="btn vbtn" onclick="resetBase()"><span class="bic">↺</span><span>Restablecer</span></button>
   </div>
 
   <!-- ===================== PROYECTO ===================== -->
@@ -1823,6 +1824,39 @@ async function repoSave(){
     if(!up.ok)throw new Error('Error al subir el archivo (HTTP '+up.status+').');
     alert('✅ Guardado en el repositorio SharePoint como: '+fname);
   }catch(e){alert('No se pudo guardar en el repositorio: '+e.message);console.error(e);}
+}
+async function repoOpen(){
+  const cfg=getGraphCfg();
+  if(!cfg||!cfg.clientId||!cfg.host||!cfg.sitePath){alert('Primero configura el repositorio (botón ⚙️).');repoConfig();return;}
+  if(location.protocol==='file:'){alert('Abrir desde el repositorio requiere el aplicativo publicado (https).');return;}
+  try{
+    const token=await graphToken(cfg);const H={Authorization:'Bearer '+token};
+    const site=await (await fetch(`https://graph.microsoft.com/v1.0/sites/${cfg.host}:${cfg.sitePath}`,{headers:H})).json();
+    if(!site.id)throw new Error('No se encontró el sitio de SharePoint.');
+    const drv=await (await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/drives`,{headers:H})).json();
+    const drive=(drv.value||[]).find(d=>d.name===cfg.library)||(drv.value||[])[0];
+    if(!drive)throw new Error('No se encontró la biblioteca "'+cfg.library+'".');
+    const list=await (await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/children?$top=500`,{headers:H})).json();
+    const files=(list.value||[]).filter(x=>x.file&&/\.json$/i.test(x.name)).sort((a,b)=>(b.lastModifiedDateTime||'').localeCompare(a.lastModifiedDateTime||''));
+    if(!files.length){alert('No hay cotizaciones (.json) guardadas en el repositorio.');return;}
+    repoOpen._drive=drive.id; repoOpen._H=H;
+    $('modal').innerHTML=`<h3>Abrir del repositorio</h3><div class="hint">Cotizaciones guardadas en SharePoint (${files.length}).</div>
+      <div style="max-height:360px;overflow:auto;margin-top:10px">${files.map(f=>`<div class="row" style="justify-content:space-between;align-items:center;border-bottom:1px solid #2b2b2b;padding:8px 4px;gap:10px"><div class="l" style="min-width:0"><div style="font-weight:600;word-break:break-word">${esc(f.name)}</div><div class="small">${f.lastModifiedDateTime?new Date(f.lastModifiedDateTime).toLocaleString():''}</div></div><button class="btn" data-openid="${esc(f.id)}">Abrir</button></div>`).join('')}</div>
+      <div class="row" style="margin-top:12px"><button class="btn sec" onclick="closeModal()">Cerrar</button></div>`;
+    $('overlay').classList.add('on');
+    document.querySelectorAll('[data-openid]').forEach(b=>b.onclick=()=>repoOpenFile(b.dataset.openid));
+  }catch(e){alert('No se pudo listar el repositorio: '+e.message);console.error(e);}
+}
+async function repoOpenFile(itemId){
+  try{
+    const H=repoOpen._H,drive=repoOpen._drive;
+    const meta=await (await fetch(`https://graph.microsoft.com/v1.0/drives/${drive}/items/${itemId}`,{headers:H})).json();
+    const url=meta['@microsoft.graph.downloadUrl']||meta['@content.downloadUrl'];
+    if(!url)throw new Error('No se obtuvo la URL de descarga.');
+    const j=JSON.parse(await (await fetch(url)).text());
+    if(j.state){S=j.state;if(j.clients)DB_CLIENTS=j.clients;if(j.dirs){if(j.dirs.preventa)DIR.preventa=j.dirs.preventa;if(j.dirs.ejecutivos)DIR.ejecutivos=j.dirs.ejecutivos;}}else{S=j;}
+    closeModal();pushToInputs();recompute();alert('✅ Proyecto abierto desde el repositorio.');
+  }catch(e){alert('No se pudo abrir el archivo: '+e.message);console.error(e);}
 }
 function loadProject(ev){
   const f=ev.target.files[0];if(!f)return;const rd=new FileReader();
