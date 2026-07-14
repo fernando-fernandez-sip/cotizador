@@ -79,6 +79,9 @@ tr.subtot td{background:#0c2033;font-weight:700}
 .btn{background:var(--acc);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:12px;cursor:pointer}
 .vbtn{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;line-height:1.15;font-size:10.5px;text-align:center;white-space:nowrap;min-width:58px;padding:7px 10px}
 .vbtn .bic{font-size:16px;line-height:1}
+.grip{cursor:grab;color:#8a97ad;user-select:none;font-weight:700;font-size:16px;line-height:1;padding:0 2px;flex:0 0 auto}
+.grip:active{cursor:grabbing}
+#ing_body tr.dragover{outline:2px dashed #E8632A;outline-offset:-2px}
 .btn.sec{background:var(--chip);border:1px solid var(--line);color:var(--ink)}
 .btn.gr{background:var(--acc2)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -412,7 +415,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
           <tfoot><tr class="subtot"><td class="l" colspan="3">Total Comisiones/Bolsa/Eventos</td><td class="nw" id="comis_total">0.00</td><td colspan="2"></td></tr></tfoot>
         </table>
       </div>
-      <button class="btn sec" style="margin-top:8px" onclick="addComis()">+ Agregar línea</button>
+      <div style="margin-top:8px"><button class="mini add" onclick="addComis()">＋ Agregar fila</button></div>
     </div>
   </section>
 
@@ -877,8 +880,9 @@ function renderIng(){
       const rowMarg=c.rowMarg;
       const pUnit=rowMarg<1?c.chr/(1-rowMarg):0;
       const r=document.createElement('tr');
+      r.dataset.row=ti+'.'+si;
       r.innerHTML=`
-        <td class="l"><textarea class="ta" rows="1" data-sub="${ti}.${si}" data-k="desc">${esc(s.desc)}</textarea></td>
+        <td class="l"><div style="display:flex;align-items:center;gap:3px"><span class="grip" data-grip="${ti}.${si}" draggable="true" title="Arrastra para mover dentro de la tarea">⋮</span><textarea class="ta" rows="1" data-sub="${ti}.${si}" data-k="desc" style="flex:1;min-width:0">${esc(s.desc)}</textarea></div></td>
         <td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-sub="${ti}.${si}" data-k="horas" value="${s.horas}"></td>
         <td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-sub="${ti}.${si}" data-k="cant" value="${s.cant}"></td>
         <td class="calc fit" style="text-align:center">${c.horasTot.toFixed(1)}</td>
@@ -887,7 +891,7 @@ function renderIng(){
         <td class="cost tight" style="text-align:center">${n2(c.cost)}</td>
         <td style="text-align:center"><div class="pctcell"><input class="num" type="text" inputmode="decimal" data-sub="${ti}.${si}" data-k="margin_pct" value="${(rowMarg*100).toFixed(2)}"><span>%</span></div></td>
         <td class="calc">${pUnit.toFixed(2)}</td>
-        <td class="calc tight"><div class="row" style="justify-content:flex-end">${n2(c.price)}<button class="mini del" data-delsub="${ti}.${si}">✕</button></div></td>`;
+        <td class="calc tight"><div class="row" style="justify-content:flex-end">${n2(c.price)}<button class="mini" data-copysub="${ti}.${si}" title="Duplicar subtarea">⧉</button><button class="mini del" data-delsub="${ti}.${si}">✕</button></div></td>`;
       b.appendChild(r);
     });
   });
@@ -977,6 +981,19 @@ function bindIng(){
   document.querySelectorAll('[data-addsub]').forEach(el=>{el.onclick=()=>{S.ing.tasks[+el.dataset.addsub].subs.push(sub('Nueva subtarea','L1'));recompute();};});
   document.querySelectorAll('[data-deltask]').forEach(el=>{el.onclick=()=>{if(S.ing.tasks.length>1){S.ing.tasks.splice(+el.dataset.deltask,1);recompute();}else alert('Debe quedar al menos una tarea.');};});
   document.querySelectorAll('[data-delsub]').forEach(el=>{el.onclick=()=>{const [ti,si]=el.dataset.delsub.split('.').map(Number);if(S.ing.tasks[ti].subs.length>1)S.ing.tasks[ti].subs.splice(si,1);else alert('Cada tarea debe tener al menos una subtarea.');recompute();};});
+  document.querySelectorAll('[data-copysub]').forEach(el=>{el.onclick=()=>{const [ti,si]=el.dataset.copysub.split('.').map(Number);const cp=JSON.parse(JSON.stringify(S.ing.tasks[ti].subs[si]));S.ing.tasks[ti].subs.splice(si+1,0,cp);recompute();};});
+  (function(){let dg=null;
+    document.querySelectorAll('#ing_body .grip[data-grip]').forEach(g=>{
+      g.ondragstart=e=>{dg=g.dataset.grip;e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',dg);}catch(_){}};
+      g.ondragend=()=>{dg=null;document.querySelectorAll('#ing_body tr.dragover').forEach(r=>r.classList.remove('dragover'));};
+    });
+    document.querySelectorAll('#ing_body tr[data-row]').forEach(row=>{
+      const okTarget=()=>dg&&row.dataset.row.split('.')[0]===dg.split('.')[0];
+      row.ondragover=e=>{if(okTarget()){e.preventDefault();e.dataTransfer.dropEffect='move';row.classList.add('dragover');}};
+      row.ondragleave=()=>row.classList.remove('dragover');
+      row.ondrop=e=>{e.preventDefault();row.classList.remove('dragover');if(!dg)return;const [sti,ssi]=dg.split('.').map(Number);const [tti,tsi]=row.dataset.row.split('.').map(Number);dg=null;if(sti!==tti||ssi===tsi)return;const arr=S.ing.tasks[sti].subs;const [m]=arr.splice(ssi,1);arr.splice(tsi,0,m);recompute();};
+    });
+  })();
   document.querySelectorAll('[data-subc]').forEach(el=>{el.oninput=()=>{const i=+el.dataset.subc,k=el.dataset.k;
     if(k==='concepto'||k==='nota'){S.ing.subc.rows[i][k]=el.value;autoGrow(el);renderQuote();}
     else if(k==='margin_pct'){S.ing.subc.rows[i].margin=num(el.value)/100;recompute();}
