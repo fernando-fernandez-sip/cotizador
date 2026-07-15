@@ -79,6 +79,15 @@ tr.subtot td{background:#0c2033;font-weight:700}
 .btn{background:var(--acc);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:700;font-size:12px;cursor:pointer}
 .vbtn{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;line-height:1.15;font-size:10.5px;text-align:center;white-space:nowrap;min-width:58px;padding:7px 10px}
 .vbtn .bic{font-size:16px;line-height:1}
+.vbtn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.5)}
+.rtebar{display:flex;gap:3px;margin-bottom:3px}
+.rtebar button{width:24px;height:22px;border:1px solid var(--line);background:var(--chip);color:#cfd8e6;border-radius:5px;cursor:pointer;font-size:12px;padding:0;line-height:1}
+.rtebar button:hover{background:#22314f}
+.rte{min-height:34px;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:5px 7px;background:#0c1730;color:#e8eefc;font-size:12px;line-height:1.35}
+.rte:focus{outline:1px solid #E8632A}
+.rte ul,.rte ol{margin:3px 0;padding-left:18px}
+#quoteDoc td .rich{white-space:normal}
+#quoteDoc td .rich ul,#quoteDoc td .rich ol{margin:2px 0;padding-left:18px}
 .grip{cursor:grab;color:#8a97ad;user-select:none;font-weight:700;font-size:16px;line-height:1;padding:0 2px;flex:0 0 auto}
 .grip:active{cursor:grabbing}
 #ing_body tr.dragover{outline:2px dashed #E8632A;outline-offset:-2px}
@@ -129,10 +138,11 @@ tr.subtot td{background:#0c2033;font-weight:700}
 <div class="wrap">
   <div class="row" style="margin-bottom:12px;flex-wrap:nowrap;gap:8px;overflow-x:auto;justify-content:center">
     <button class="btn sec vbtn" onclick="newProject()"><span class="bic">✨</span><span>Nuevo</span></button>
-    <label class="btn sec vbtn" style="cursor:pointer"><span class="bic">📂</span><span>Abrir (local)</span><input type="file" accept=".json" style="display:none" onchange="loadProject(event)"></label>
+    <button class="btn sec vbtn" onclick="abrirLocal()"><span class="bic">📂</span><span>Abrir (local)</span></button>
+    <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadProject(event)">
     <button class="btn sec vbtn" onclick="repoOpen()"><span class="bic">☁️</span><span>Abrir del repositorio</span></button>
-    <button class="btn sec vbtn" onclick="saveProject()"><span class="bic">💾</span><span>Guardar (local)</span></button>
-    <button class="btn sec vbtn" onclick="repoSave()"><span class="bic">☁️</span><span>Guardar en repositorio</span></button>
+    <button id="btnGuardar" class="btn sec vbtn" onclick="guardar()"><span class="bic">💾</span><span>Guardar</span></button>
+    <button id="btnGuardarCambios" class="btn sec vbtn" onclick="guardarCambios()"><span class="bic">📝</span><span>Guardar Cambios</span></button>
     <button class="btn sec vbtn" onclick="repoConfig()" title="Configurar repositorio M365"><span class="bic">⚙️</span><span>Config</span></button>
     <button type="button" class="btn vbtn" onclick="toggleCalc()"><span class="bic">🧮</span><span>Calculadora</span></button>
     <button class="btn gr vbtn" onclick="exportExcel()"><span class="bic">⬇️</span><span>Descargar Excel</span></button>
@@ -156,7 +166,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
         <div><label class="f">Ingeniero de Preventa</label><div class="row" style="gap:4px;flex-wrap:nowrap"><select id="p_preventa" onchange="onPreventaChange()" style="flex:1;min-width:0"></select><button class="mini del" onclick="deletePreventa()" title="Eliminar preventa">🗑</button></div></div>
         <div><label class="f">Ejecutivo de Cuenta</label><div class="row" style="gap:4px;flex-wrap:nowrap"><select id="p_ejecutivo" onchange="onEjecutivoChange()" style="flex:1;min-width:0"></select><button class="mini del" onclick="deleteEjecutivo()" title="Eliminar ejecutivo">🗑</button></div></div>
         <div><label class="f">Fecha de aplicación</label><input id="p_fecha" type="date"></div>
-        <div><label class="f">Versión</label><input id="p_version" value="V1" style="width:80px;text-align:center"></div>
+        <div><label class="f">Versión</label><input id="p_version" value="v1" readonly tabindex="-1" title="La versión se asigna automáticamente (Guardar / Guardar Cambios)" style="width:80px;text-align:center;background:#0c1730;color:#E8632A;font-weight:700;pointer-events:none;cursor:default"></div>
       </div>
       <div id="p_clientbox" style="margin-top:10px"></div>
       <div id="p_preventabox" style="margin-top:10px"></div>
@@ -174,6 +184,16 @@ tr.subtot td{background:#0c2033;font-weight:700}
       </div>
       <div style="margin-top:10px"><label class="f">Marcas / Proveedores</label><textarea id="t_marcas" class="ta" rows="1"></textarea></div>
       <div style="margin-top:10px"><label class="f">Notas técnicas</label><textarea id="t_notas" class="ta" rows="2"></textarea></div>
+    </div>
+    <div class="card">
+      <h2>Historial de cambios</h2>
+      <div class="hint">Se registra automáticamente cada "Guardar Cambios" (fecha · versión · hora). El resumen es editable.</div>
+      <div style="overflow-x:auto">
+        <table id="hist_table">
+          <thead><tr><th class="fitc">Fecha</th><th class="fitc">Versión</th><th class="fitc">Hora</th><th class="l">Resumen de cambios</th></tr></thead>
+          <tbody id="hist_body"></tbody>
+        </table>
+      </div>
     </div>
   </section>
 
@@ -288,7 +308,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
       <h3>CALCULADORA RECURSO EN SITIO</h3>
       <div class="hint">Carga social por defecto 42%. Facturación mensual.</div>
       <table id="onsite_table">
-        <thead><tr><th class="l" style="text-align:center">Descripción</th><th>Cant.</th><th>Costo unit.</th><th>Carga social</th><th>Subtotal unit.</th><th>Costo total</th><th>Margen</th><th>Precio total</th></tr></thead>
+        <thead><tr><th class="l" style="text-align:center">Descripción</th><th>Cant.</th><th>Costo unit.</th><th>Carga social</th><th>Subtotal unit.</th><th>Costo total</th><th>Margen</th><th>Precio total</th><th></th></tr></thead>
         <tbody id="onsite_body"></tbody>
       </table>
       <div class="kpis" style="margin-top:12px;grid-template-columns:repeat(6,1fr)">
@@ -320,18 +340,22 @@ tr.subtot td{background:#0c2033;font-weight:700}
     <div class="card wide">
       <h2>Materiales (BOM de infraestructura)</h2>
       <div class="row" style="align-items:flex-end;gap:16px">
-        <div style="width:130px"><label class="f">Moneda de captura</label><select id="mat_moneda" onchange="recompute()"><option>MXN</option><option>USD</option></select></div>
+        <div style="width:120px"><label class="f">Descuento Global</label><div class="pctcell"><input id="mat_discG" type="text" inputmode="decimal" oninput="setBOMglobal('mat','disc',this.value)"><span>%</span></div></div>
+        <div style="width:120px"><label class="f">Margen Global</label><div class="pctcell"><input id="mat_marginG" type="text" inputmode="decimal" oninput="setBOMglobal('mat','margin',this.value)"><span>%</span></div></div>
+        <div style="width:120px"><label class="f">Moneda</label><select id="mat_moneda" onchange="recompute()"><option>MXN</option><option>USD</option></select></div>
+        <div style="width:110px"><label class="f">Tipo de cambio</label><input id="mat_fx" type="number" step="0.01" value="19" oninput="S.mat.fx=num(this.value)"></div>
+        <button class="btn sec" onclick="convertBOM('mat')" title="Convierte PL unit. entre MXN y USD">🔁 Convertir</button>
         <button class="btn sec" onclick="downloadTemplate('mat')">⬇️ Descargar plantilla</button>
         <label class="btn sec" style="cursor:pointer">⬆️ Cargar plantilla<input type="file" accept=".xlsx" style="display:none" onchange="importBulk('mat',event)"></label>
       </div>
-      <div class="hint">La moneda es solo un indicador de texto; no altera la aritmética (igual que el Excel original). Descuento y Margen son por fila. Puedes descargar la plantilla, llenarla y cargarla para carga masiva.</div>
+      <div class="hint"><b>Descuento/Margen Global</b> autollenan las columnas (puedes ajustar por fila). <b>Convertir</b> cambia los PL unit. según el Tipo de cambio y la moneda mostrada. <b>Descuento al cliente</b> = 1 − (Precio unit. / PL unit.).</div>
       <div style="overflow-x:auto">
         <table id="mat_table">
           <thead><tr>
             <th>Proveedor</th><th>Marca</th><th class="fit nw">No. Item</th><th>SKU</th><th>Descripción</th>
             <th class="fit nw">PL unit.</th><th class="fit nw">Cant.</th><th class="fit nw">PL total</th>
             <th class="fit nw">Descuento</th><th class="fit nw">Costo unit.</th><th class="fit nw">Costo subtot.</th>
-            <th class="fit nw">Margen</th><th class="fit nw">Precio unit.</th><th class="fit nw">Precio total</th><th></th>
+            <th class="fit nw">Margen</th><th class="fit nw">Precio unit.</th><th class="fit nw">Precio total</th><th class="fit nw">Descuento al cliente</th><th></th>
           </tr></thead>
           <tbody id="mat_body"></tbody>
         </table>
@@ -350,18 +374,22 @@ tr.subtot td{background:#0c2033;font-weight:700}
     <div class="card wide">
       <h2>Contratos de soporte / Renovaciones</h2>
       <div class="row" style="align-items:flex-end;gap:16px">
-        <div style="width:130px"><label class="f">Moneda de captura</label><select id="con_moneda" onchange="recompute()"><option>MXN</option><option>USD</option></select></div>
+        <div style="width:120px"><label class="f">Descuento Global</label><div class="pctcell"><input id="con_discG" type="text" inputmode="decimal" oninput="setBOMglobal('con','disc',this.value)"><span>%</span></div></div>
+        <div style="width:120px"><label class="f">Margen Global</label><div class="pctcell"><input id="con_marginG" type="text" inputmode="decimal" oninput="setBOMglobal('con','margin',this.value)"><span>%</span></div></div>
+        <div style="width:120px"><label class="f">Moneda</label><select id="con_moneda" onchange="recompute()"><option>MXN</option><option>USD</option></select></div>
+        <div style="width:110px"><label class="f">Tipo de cambio</label><input id="con_fx" type="number" step="0.01" value="19" oninput="S.con.fx=num(this.value)"></div>
+        <button class="btn sec" onclick="convertBOM('con')" title="Convierte PL unit. entre MXN y USD">🔁 Convertir</button>
         <button class="btn sec" onclick="downloadTemplate('con')">⬇️ Descargar plantilla</button>
         <label class="btn sec" style="cursor:pointer">⬆️ Cargar plantilla<input type="file" accept=".xlsx" style="display:none" onchange="importBulk('con',event)"></label>
       </div>
-      <div class="hint">La moneda es solo un indicador de texto; no altera la aritmética. Descuento y Margen son por fila. Puedes descargar la plantilla, llenarla y cargarla para carga masiva.</div>
+      <div class="hint"><b>Descuento/Margen Global</b> autollenan las columnas (puedes ajustar por fila). <b>Convertir</b> cambia los PL unit. según el Tipo de cambio y la moneda mostrada. <b>Descuento al cliente</b> = 1 − (Precio unit. / PL unit.).</div>
       <div style="overflow-x:auto">
         <table id="con_table">
           <thead><tr>
             <th>Proveedor</th><th>Marca</th><th class="fit nw">No. Item</th><th>SKU</th><th>Descripción</th>
             <th class="fit nw">PL unit.</th><th class="fit nw">Cant.</th><th class="fit nw">PL total</th>
             <th class="fit nw">Descuento</th><th class="fit nw">Costo unit.</th><th class="fit nw">Costo subtot.</th>
-            <th class="fit nw">Margen</th><th class="fit nw">Precio unit.</th><th class="fit nw">Precio total</th><th></th>
+            <th class="fit nw">Margen</th><th class="fit nw">Precio unit.</th><th class="fit nw">Precio total</th><th class="fit nw">Descuento al cliente</th><th></th>
           </tr></thead>
           <tbody id="con_body"></tbody>
         </table>
@@ -435,6 +463,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
     <div class="card">
       <h2>Tarifas y catálogos (hoja DATA)</h2>
       <div class="notice">Replican el catálogo del Excel. Afecta el cálculo en vivo (no el Excel exportado, que usa las tarifas del template).</div>
+      <div class="notice" style="border-left:4px solid #E8632A"><b>Todos los costos están expresados en Dólares Americanos (USD).</b></div>
       <div class="ratewrap">
         <div><h3>Costo/hora por perfil</h3><table id="rate_profiles" class="ratetbl"><thead><tr><th class="l">Perfil</th><th>Costo LATAM</th></tr></thead><tbody></tbody></table></div>
         <div><h3>Costo dispositivo (Básico)</h3><table id="rate_basic" class="ratetbl"><tbody></tbody></table></div>
@@ -442,7 +471,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
         <div><h3>Costo Endpoint</h3><table id="rate_end" class="ratetbl"><tbody></tbody></table></div>
         <div><h3>SLA</h3><table id="rate_sla" class="ratetbl"><tbody></tbody></table></div>
         <div><h3>ARC (MRC)</h3><table id="rate_arc" class="ratetbl"><tbody></tbody></table></div>
-        <div><h3>Ticket base + factores</h3><table id="rate_misc" class="ratetbl"><tbody></tbody></table></div>
+        <div><h3>Ticket base</h3><table id="rate_misc" class="ratetbl"><tbody></tbody></table></div>
         <div><h3>ADD Ons (factores)</h3><table id="rate_addon" class="ratetbl"><thead><tr><th class="l">Add On</th><th>Factor</th></tr></thead><tbody></tbody></table>
           <div class="small" style="margin-top:4px;max-width:230px">Se aplican al costo del paquete cuando Mant. preventivo / Asistencia en sitio = Yes.</div></div>
         <div><h3>Descuento multianual</h3><table id="rate_multi" class="ratetbl"><thead><tr><th class="l">Duración</th><th>Descuento</th></tr></thead><tbody></tbody></table>
@@ -584,7 +613,7 @@ const TRIP_ROWS=[101,104,105,106,107,108,111,112,115,118,119];
 let S = defaultState();
 function defaultState(){
   const st = {
-    proyecto:{pais:'México',oficina:'Sipnology GDL',empresa:'',contacto:'',oportunidad:'',crm:'',preventa:'Fernando Fernández',ejecutivo:'Samuel Huerta',fecha:new Date().toISOString().slice(0,10),version:'V1'},
+    proyecto:{pais:'México',oficina:'Sipnology GDL',empresa:'',contacto:'',oportunidad:'',crm:'',preventa:'Fernando Fernández',ejecutivo:'Samuel Huerta',fecha:new Date().toISOString().slice(0,10),version:'v1'},
     tecnico:{sector:'-',tipoimpl:'-',soporte:'Administrado',despliegue:'-',sitios:0,dur:'-',marcas:'',notas:''},
     ing:{moneda:'MXN',fx:20,margin:0.4,tasks:defaultTasks(),
          subc:{moneda:'MXN',fx:20,rows:[{concepto:'',cant:1,costo:0,margin:0.1,nota:''},{concepto:'',cant:1,costo:0,margin:0,nota:''},{concepto:'',cant:1,costo:0,margin:0,nota:''}]},
@@ -594,7 +623,7 @@ function defaultState(){
         add:{mant:'-',asist:'-',nac:'-',intl:'-'}, dev:{basic:{},adv:{},end:{}}, onsite:[],
         cotiz:{rows:[{partida:'',desc:'',cant:1,costo:0,nota:''},{partida:'',desc:'',cant:1,costo:0,nota:''}]}},
     mat:{fx:19,disc:0.15,margin:0.15,moneda:'MXN',tax:0,freight:0,rows:[]},
-    con:{disc:0.15,margin:0.2,moneda:'MXN',rows:[]}
+    con:{disc:0.15,margin:0.2,moneda:'MXN',fx:19,rows:[]}
   };
   ['basic','adv','end'].forEach(k=>DEV_ROWS[k].forEach(d=>st.sa.dev[k][d.r]=0));
   st.sa.devNames={basic:{},adv:{},end:{}};
@@ -603,6 +632,7 @@ function defaultState(){
   for(let i=0;i<21;i++) st.mat.rows.push({prov:i===0?'INGRAM':'',marca:i===0?'Cisco':'',item:'',sku:'',desc:'',pl:0,qty:0,disc:0.15,margin:0.15});
   for(let i=0;i<19;i++) st.con.rows.push({prov:i===0?'INGRAM':'',marca:i===0?'Cisco':'',item:'',sku:'',desc:'',pl:0,qty:0,disc:0.15,margin:0.2});
   st.comercial={notas:'',condiciones:DEFAULT_CONDICIONES,comisiones:[{partida:'1',desc:'',cant:1,monto:0,nota:''}]};
+  st.historial=[];
   // ---- Datos de MUESTRA (para visualizar la cotización sin recapturar) ----
   st.proyecto.empresa='BBVA'; st.proyecto.contacto='Luis Octavio Rubio';
   st.proyecto.oportunidad='Renovación LAN CPD'; st.proyecto.crm='OPP-2026-014';
@@ -644,6 +674,17 @@ function n2(v){return (v<0?'-':'')+Math.abs(num(v)).toLocaleString('en-US',{mini
 function itemVal(v,i){if(v==null||String(v).trim()==='')return i+1;const s=String(v).replace(/,/g,'');const n=Number(s);return isNaN(n)?v:n;}
 function pct(v){return (v*100).toFixed(2)+'%';}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function conceptoToHtml(v){v=String(v==null?'':v);if(/<[a-z!/][\s\S]*>/i.test(v))return v;return esc(v).replace(/\n/g,'<br>');}
+function htmlToText(html){let s=String(html==null?'':html);if(!/[<]/.test(s))return s;s=s.replace(/<\s*br\s*\/?>/gi,'\n').replace(/<\s*li[^>]*>/gi,'- ').replace(/<\/\s*(li|p|div|tr|h[1-6])\s*>/gi,'\n').replace(/<[^>]+>/g,'');const d=document.createElement('textarea');d.innerHTML=s;s=d.value;return s.replace(/\n{3,}/g,'\n\n').replace(/[ \t]+\n/g,'\n').trim();}
+/* Editor de texto enriquecido reutilizable (barra + contenteditable) */
+const RTE_TARGETS={prop:{arr:()=>(S.ing.prop&&S.ing.prop.rows),field:'concepto'},sacot:{arr:()=>(S.sa.cotiz&&S.sa.cotiz.rows),field:'desc'}};
+function rteBar(g,i){return `<div class="rtebar"><button type="button" data-rtecmd="bold" title="Negrita"><b>B</b></button><button type="button" data-rtecmd="italic" title="Cursiva"><i>I</i></button><button type="button" data-rtecmd="underline" title="Subrayado"><u>U</u></button><button type="button" data-rtecmd="insertUnorderedList" title="Viñetas">•</button></div><div class="rte" contenteditable="true" data-rteg="${g}" data-rtei="${i}"></div>`;}
+function rteStore(g,i,html){const t=RTE_TARGETS[g];if(!t)return;const a=t.arr();if(a&&a[i])a[i][t.field]=html;}
+function rteFill(){document.querySelectorAll('.rte[data-rteg]').forEach(ed=>{const t=RTE_TARGETS[ed.dataset.rteg];if(!t)return;const a=t.arr();const i=+ed.dataset.rtei;ed.innerHTML=conceptoToHtml(a&&a[i]?a[i][t.field]:'');});}
+function bindRTE(){
+  document.querySelectorAll('.rte[data-rteg]').forEach(ed=>{ed.oninput=()=>{rteStore(ed.dataset.rteg,+ed.dataset.rtei,ed.innerHTML);renderQuote();};});
+  document.querySelectorAll('.rtebar button[data-rtecmd]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>{const ed=b.closest('td').querySelector('.rte');if(!ed)return;ed.focus();document.execCommand(b.dataset.rtecmd,false,null);rteStore(ed.dataset.rteg,+ed.dataset.rtei,ed.innerHTML);renderQuote();};});
+}
 function profileCost(p,moneda,fx){return (CFG.profiles[p]||0)*(moneda==='MXN'?num(fx):1);}
 function volDisc(n){for(const b of CFG.volume){if(n>=b.lo&&n<=b.hi)return b.d;}return 0;}
 function multiDisc(m){m=num(m);for(const b of CFG.multiannual){if(m>=b.lo&&m<=b.hi)return b.d;}return 0;}
@@ -783,8 +824,9 @@ function compute(){
   let matCost=0,matPrice=0,matPL=0,matCUnit=0,matPUnit=0; const matCalc=S.mat.rows.map(row=>{
     const pl=num(row.pl), qty=num(row.qty), disc=num(row.disc), marg=num(row.margin);
     const plTot=pl*qty, cUnit=pl-disc*pl, cSub=cUnit*qty, pUnit=marg<1?cUnit/(1-marg):0, pTot=pUnit*qty;
+    const dcli=pl>0?(1-(pUnit/pl)):0;
     matCost+=cSub;matPrice+=pTot;matPL+=plTot;matCUnit+=cUnit;matPUnit+=pUnit;
-    return {plTot,cUnit,cSub,pUnit,pTot};
+    return {plTot,cUnit,cSub,pUnit,pTot,dcli};
   });
   R.mat={cost:matCost,price:matPrice,pl:matPL,cUnitSum:matCUnit,pUnitSum:matPUnit,taxLog:0,matCalc,marg:matPrice?((matPrice-matCost)/matPrice):0};
 
@@ -792,8 +834,9 @@ function compute(){
   let conCost=0,conPrice=0,conPL=0,conCUnit=0,conPUnit=0; const conCalc=S.con.rows.map(row=>{
     const pl=num(row.pl), qty=num(row.qty), disc=num(row.disc), marg=num(row.margin);
     const plTot=pl*qty, cUnit=pl-disc*pl, cSub=cUnit*qty, pUnit=marg<1?cUnit/(1-marg):0, pTot=pUnit*qty;
+    const dcli=pl>0?(1-(pUnit/pl)):0;
     conCost+=cSub;conPrice+=pTot;conPL+=plTot;conCUnit+=cUnit;conPUnit+=pUnit;
-    return {plTot,cUnit,cSub,pUnit,pTot};
+    return {plTot,cUnit,cSub,pUnit,pTot,dcli};
   });
   R.con={cost:conCost,price:conPrice,pl:conPL,cUnitSum:conCUnit,pUnitSum:conPUnit,conCalc,marg:conPrice?((conPrice-conCost)/conPrice):0};
 
@@ -821,6 +864,34 @@ function compute(){
 let LAST={};
 function recompute(){const f=snapFocus();syncFromInputs();LAST=compute();renderResults();restoreFocus(f);}
 
+/* ===== Sistema genérico: mover (arrastrar ⋮) y duplicar (⧉) filas dentro de una lista ===== */
+const DND_GROUPS={
+  subc:()=>S.ing.subc.rows,
+  trip:()=>S.ing.trips,
+  prop:()=>(S.ing.prop&&S.ing.prop.rows),
+  sacalc:()=>(S.sa.sacalc&&S.sa.sacalc.rows),
+  onsite:()=>S.sa.onsite,
+  sacot:()=>(S.sa.cotiz&&S.sa.cotiz.rows),
+  mat:()=>S.mat.rows,
+  con:()=>S.con.rows
+};
+function grip(g,i){return `<span class="grip" data-dgrip="${g}.${i}" draggable="true" title="Arrastra para mover dentro de la lista">⋮</span>`;}
+function copyBtn(g,i){return `<button class="mini" data-copy="${g}.${i}" title="Duplicar fila">⧉</button>`;}
+function dndCopy(g,i){const arr=DND_GROUPS[g]&&DND_GROUPS[g]();if(!arr||!arr[i])return;arr.splice(i+1,0,JSON.parse(JSON.stringify(arr[i])));recompute();}
+function bindRowDnD(){
+  let dg=null;
+  document.querySelectorAll('.grip[data-dgrip]').forEach(gr=>{
+    gr.ondragstart=e=>{dg=gr.dataset.dgrip;e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',dg);}catch(_){}};
+    gr.ondragend=()=>{dg=null;document.querySelectorAll('tr.dragover').forEach(r=>r.classList.remove('dragover'));};
+  });
+  document.querySelectorAll('tr[data-dndg]').forEach(row=>{
+    const same=()=>dg&&dg.split('.')[0]===row.dataset.dndg;
+    row.ondragover=e=>{if(same()){e.preventDefault();row.classList.add('dragover');}};
+    row.ondragleave=()=>row.classList.remove('dragover');
+    row.ondrop=e=>{e.preventDefault();row.classList.remove('dragover');if(!dg)return;const p=dg.split('.'),g=p[0],from=+p[1],to=+row.dataset.dndi;dg=null;if(g!==row.dataset.dndg||from===to)return;const arr=DND_GROUPS[g]&&DND_GROUPS[g]();if(!arr)return;const [m]=arr.splice(from,1);arr.splice(to,0,m);recompute();};
+  });
+  document.querySelectorAll('[data-copy]').forEach(b=>{b.onclick=()=>{const p=b.dataset.copy.split('.');dndCopy(p[0],+p[1]);};});
+}
 function renderResults(){
   renderIng();
   renderSA();
@@ -830,6 +901,9 @@ function renderResults(){
   renderComis();
   renderResumen();
   renderQuote();
+  rteFill();
+  bindRTE();
+  bindRowDnD();
   growAll();
 }
 function renderComis(){
@@ -916,15 +990,15 @@ function renderIng(){
   const sb=$('subc_body'); sb.innerHTML='';
   S.ing.subc.rows.forEach((r,i)=>{
     const c=R.subc.rows[i];
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="l"><textarea class="ta" rows="1" data-subc="${i}" data-k="concepto" style="width:100%">${esc(r.concepto)}</textarea></td>
+    const tr=document.createElement('tr');tr.dataset.dndg='subc';tr.dataset.dndi=i;
+    tr.innerHTML=`<td class="l"><div style="display:flex;align-items:center;gap:3px">${grip('subc',i)}<textarea class="ta" rows="1" data-subc="${i}" data-k="concepto" style="flex:1;min-width:0">${esc(r.concepto)}</textarea></div></td>
       <td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-subc="${i}" data-k="cant" value="${r.cant}"></td>
       <td class="fit" style="text-align:center"><input class="numw" type="text" inputmode="decimal" data-subc="${i}" data-k="costo" value="${n2(r.costo)}"></td>
       <td class="fit" style="text-align:center"><div class="pctcell"><input class="num" type="text" inputmode="decimal" data-subc="${i}" data-k="margin_pct" value="${(num(r.margin)*100).toFixed(2)}"><span>%</span></div></td>
       <td class="cost fit tight">${n2(c.cost)}</td>
       <td class="calc fit tight">${n2(c.price)}</td>
       <td class="l"><textarea class="ta" rows="1" data-subc="${i}" data-k="nota" style="width:100%">${esc(r.nota||'')}</textarea></td>
-      <td><button class="mini del" data-delsubc="${i}">✕</button></td>`;
+      <td>${copyBtn('subc',i)}<button class="mini del" data-delsubc="${i}">✕</button></td>`;
     sb.appendChild(tr);
   });
   $('subc_cost').textContent=money(R.subc.cost,scur);
@@ -935,13 +1009,13 @@ function renderIng(){
   const tb=$('trip_body'); tb.innerHTML='';
   S.ing.trips.forEach((t,i)=>{
     const c=R.trip.rows[i];
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="l"><textarea class="ta" rows="1" data-trip="${i}" data-k="concepto" style="width:100%">${esc(t.concepto)}</textarea></td>
+    const tr=document.createElement('tr');tr.dataset.dndg='trip';tr.dataset.dndi=i;
+    tr.innerHTML=`<td class="l"><div style="display:flex;align-items:center;gap:3px">${grip('trip',i)}<textarea class="ta" rows="1" data-trip="${i}" data-k="concepto" style="flex:1;min-width:0">${esc(t.concepto)}</textarea></div></td>
       <td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-trip="${i}" data-k="cant" value="${t.cant}"></td>
       <td class="fit" style="text-align:center"><input class="numw" type="text" inputmode="decimal" data-trip="${i}" data-k="costo" value="${n2(t.costo)}"></td>
       <td class="calc fit tight">${n2(c.price)}</td>
       <td class="l"><textarea class="ta" rows="1" data-trip="${i}" data-k="nota" style="width:100%">${esc(t.nota||'')}</textarea></td>
-      <td><button class="mini del" data-deltrip="${i}">✕</button></td>`;
+      <td>${copyBtn('trip',i)}<button class="mini del" data-deltrip="${i}">✕</button></td>`;
     tb.appendChild(tr);
   });
   $('trip_total').textContent=money(R.trip.price,cur);
@@ -950,14 +1024,14 @@ function renderIng(){
   const pb=$('prop_body'); pb.innerHTML='';
   (S.ing.prop&&S.ing.prop.rows?S.ing.prop.rows:[]).forEach((r,i)=>{
     const c=R.prop.rows[i];
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-prop="${i}" data-k="partida" value="${esc(r.partida||'')}"></td>
-      <td class="l"><textarea class="ta" rows="1" data-prop="${i}" data-k="concepto" style="width:100%">${esc(r.concepto)}</textarea></td>
+    const tr=document.createElement('tr');tr.dataset.dndg='prop';tr.dataset.dndi=i;
+    tr.innerHTML=`<td class="fit"><div style="display:flex;align-items:center;gap:3px">${grip('prop',i)}<input class="num" type="text" inputmode="decimal" data-prop="${i}" data-k="partida" value="${esc(r.partida||'')}" style="text-align:center;flex:1;min-width:0"></div></td>
+      <td class="l">${rteBar('prop',i)}</td>
       <td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-prop="${i}" data-k="cant" value="${r.cant}"></td>
       <td class="fit" style="text-align:center"><input class="numw" type="text" inputmode="decimal" data-prop="${i}" data-k="costo" value="${n2(r.costo)}"></td>
       <td class="calc fit tight">${n2(c.pTot)}</td>
       <td class="l"><textarea class="ta" rows="1" data-prop="${i}" data-k="nota" style="width:100%">${esc(r.nota||'')}</textarea></td>
-      <td><button class="mini del" data-delprop="${i}">✕</button></td>`;
+      <td>${copyBtn('prop',i)}<button class="mini del" data-delprop="${i}">✕</button></td>`;
     pb.appendChild(tr);
   });
   $('prop_price').textContent=money(R.prop.priceTotal,cur);
@@ -1045,15 +1119,16 @@ function renderSA(){
   const ob=$('onsite_body'); ob.innerHTML='';
   S.sa.onsite.forEach((o,i)=>{
     const c=R.onsite.onCalc[i];
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="l"><input value="${esc(o.d)}" data-on="${i}" data-k="d" style="width:120px"></td>
+    const tr=document.createElement('tr');tr.dataset.dndg='onsite';tr.dataset.dndi=i;
+    tr.innerHTML=`<td class="l"><div style="display:flex;align-items:center;gap:3px">${grip('onsite',i)}<input value="${esc(o.d)}" data-on="${i}" data-k="d" style="flex:1;min-width:0"></div></td>
       <td style="text-align:center"><input class="num" type="text" inputmode="numeric" value="${o.cant}" data-on="${i}" data-k="cant"></td>
       <td style="text-align:center"><input class="numw" type="text" inputmode="decimal" value="${n2(o.costo)}" data-on="${i}" data-k="costo"></td>
       <td style="text-align:center"><div class="pctcell"><input type="text" inputmode="decimal" value="${(num(o.carga)*100).toFixed(2)}" data-on="${i}" data-k="carga_pct"><span>%</span></div></td>
       <td class="cost nw" style="text-align:center">${n2(c.subUnit)}</td>
       <td class="cost nw" style="text-align:center">${n2(c.cost)}</td>
       <td style="text-align:center"><div class="pctcell"><input type="text" inputmode="decimal" value="${(num(c.marg)*100).toFixed(2)}" data-on="${i}" data-k="margin_pct"><span>%</span></div></td>
-      <td class="calc nw" style="text-align:center">${n2(c.price)}</td>`;
+      <td class="calc nw" style="text-align:center">${n2(c.price)}</td>
+      <td>${copyBtn('onsite',i)}<button class="mini del" data-delon="${i}">✕</button></td>`;
     ob.appendChild(tr);
   });
   $('onsite_qty').textContent=R.onsite.qty;
@@ -1070,20 +1145,21 @@ function renderSA(){
     else if(k==='margin_pct'){S.sa.onsite[i].margin=num(el.value)/100;recompute();}
     else{S.sa.onsite[i][k]=num(el.value);recompute();}
   };});
+  document.querySelectorAll('[data-delon]').forEach(el=>{el.onclick=()=>{if(S.sa.onsite.length>1)S.sa.onsite.splice(+el.dataset.delon,1);else alert('Debe quedar al menos un recurso.');recompute();};});
   document.querySelectorAll('#onsite_body input.numw').forEach(el=>{sizeMoney(el);el.onfocus=()=>{const v=num(el.value);el.value=(v===0?'':String(v));sizeMoney(el);};el.onblur=()=>{el.value=n2(num(el.value));sizeMoney(el);};});
 
   // Cotización de Soporte / Servicios Administrados (tabla estilo Propuesta Ingeniería)
   const cb=$('sacot_body'); cb.innerHTML='';
   (S.sa.cotiz&&S.sa.cotiz.rows?S.sa.cotiz.rows:[]).forEach((r,i)=>{
     const c=R.sacot.rows[i];
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-cot="${i}" data-k="partida" value="${esc(r.partida||'')}"></td>
-      <td class="l"><textarea class="ta" rows="1" data-cot="${i}" data-k="desc" style="width:100%">${esc(r.desc||'')}</textarea></td>
+    const tr=document.createElement('tr');tr.dataset.dndg='sacot';tr.dataset.dndi=i;
+    tr.innerHTML=`<td class="fit"><div style="display:flex;align-items:center;gap:3px">${grip('sacot',i)}<input class="num" type="text" inputmode="decimal" data-cot="${i}" data-k="partida" value="${esc(r.partida||'')}" style="text-align:center;flex:1;min-width:0"></div></td>
+      <td class="l">${rteBar('sacot',i)}</td>
       <td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-cot="${i}" data-k="cant" value="${r.cant}"></td>
       <td class="fit" style="text-align:center"><input class="numw" type="text" inputmode="decimal" data-cot="${i}" data-k="costo" value="${n2(r.costo)}"></td>
       <td class="calc fit tight">${n2(c.pTot)}</td>
       <td class="l"><textarea class="ta" rows="1" data-cot="${i}" data-k="nota" style="width:100%">${esc(r.nota||'')}</textarea></td>
-      <td><button class="mini del" data-delcot="${i}">✕</button></td>`;
+      <td>${copyBtn('sacot',i)}<button class="mini del" data-delcot="${i}">✕</button></td>`;
     cb.appendChild(tr);
   });
   $('sacot_price').textContent=money(R.sacot.priceTotal,scur);
@@ -1121,6 +1197,7 @@ function renderBOMtable(tag){
       <td class="fit" style="text-align:center"><div class="pctcell"><input type="text" inputmode="decimal" data-b2="${tag}" data-i="${i}" data-k="margin_pct" value="${(num(row.margin)*100).toFixed(2)}"><span>%</span></div></td>
       <td class="calc fit tight">${money(c.pUnit,cur)}</td>
       <td class="calc fit tight">${money(c.pTot,cur)}</td>
+      <td class="fit tight" style="text-align:center">${pct(c.dcli)}</td>
       <td class="fit" style="text-align:center"><button class="mini del" data-delb2="${tag}.${i}">✕</button></td>`;
     body.appendChild(tr);
   });
@@ -1131,6 +1208,12 @@ function renderBOMtable(tag){
   $(tag+'_ptot').textContent=money(Rt.price,cur);
   $(tag+'_marg').textContent=pct(Rt.marg);
 }
+function setBOMglobal(tag,field,pctVal){const St=tag==='mat'?S.mat:S.con;const v=num(pctVal)/100;St[field]=v;St.rows.forEach(r=>r[field]=v);recompute();}
+function convertBOM(tag){const St=tag==='mat'?S.mat:S.con;const tc=num(St.fx);if(tc<=0){alert('Ingresa un Tipo de cambio válido (> 0).');return;}
+  const from=St.moneda||'MXN', to=(from==='MXN'?'USD':'MXN');
+  St.rows.forEach(r=>{const pl=num(r.pl);r.pl=(to==='USD')?(pl/tc):(pl*tc);});
+  St.moneda=to;const sel=$(tag+'_moneda');if(sel)sel.value=to;recompute();
+  alert('PL unit. convertidos de '+from+' a '+to+' (Tipo de cambio '+tc.toFixed(2)+').');}
 function bindBOM2(){
   document.querySelectorAll('[data-b2]').forEach(el=>{el.oninput=()=>{
     const tag=el.dataset.b2, i=+el.dataset.i, k=el.dataset.k;
@@ -1196,22 +1279,22 @@ function renderQuote(){
   const pv=DIR.preventa.find(x=>x.nombre===p.preventa), am=DIR.ejecutivos.find(x=>x.nombre===p.ejecutivo);
   // Servicios profesionales <- Propuesta Ingeniería
   let servRows='';
-  ((S.ing.prop&&S.ing.prop.rows)?S.ing.prop.rows:[]).forEach((r,i)=>{const c=R.prop.rows[i];if(c&&(c.pTot>0||num(r.costo)>0)){servRows+=`<tr><td>${esc(r.partida||(i+1))}</td><td class="l">${esc(r.concepto||'')}</td><td>${esc(r.cant)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;}});
+  ((S.ing.prop&&S.ing.prop.rows)?S.ing.prop.rows:[]).forEach((r,i)=>{const c=R.prop.rows[i];if(c&&(c.pTot>0||num(r.costo)>0)){servRows+=`<tr><td>${esc(r.partida||(i+1))}</td><td class="l"><div class="rich">${conceptoToHtml(r.concepto||'')}</div></td><td>${esc(r.cant)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;}});
   if(!servRows)servRows=`<tr><td colspan="5" class="l" style="color:#999">Sin partidas</td></tr>`;
   const servTotal=R.prop.priceTotal;
   // Mesa de ayuda / Recursos en sitio <- Propuesta de Soporte
   let mesaRows='';
-  ((S.sa.cotiz&&S.sa.cotiz.rows)?S.sa.cotiz.rows:[]).forEach((r,i)=>{const c=R.sacot.rows[i];if(c&&(c.pTot>0||num(r.costo)>0)){mesaRows+=`<tr><td>${esc(r.partida||(i+1))}</td><td class="l">${esc(r.desc||'')}</td><td>${esc(r.cant)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;}});
+  ((S.sa.cotiz&&S.sa.cotiz.rows)?S.sa.cotiz.rows:[]).forEach((r,i)=>{const c=R.sacot.rows[i];if(c&&(c.pTot>0||num(r.costo)>0)){mesaRows+=`<tr><td>${esc(r.partida||(i+1))}</td><td class="l"><div class="rich">${conceptoToHtml(r.desc||'')}</div></td><td>${esc(r.cant)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;}});
   if(!mesaRows)mesaRows=`<tr><td colspan="5" class="l" style="color:#999">Sin partidas</td></tr>`;
   const mesaTotal=R.sacot.priceTotal;
   // Materiales <- BOM
   let matRows='',mi=1;
-  S.mat.rows.forEach((row,i)=>{const c=R.mat.matCalc[i];if(num(row.qty)>0&&c.pTot>0){matRows+=`<tr><td>${esc(row.item||mi)}</td><td class="l">${esc(row.sku)}</td><td class="l">${esc(row.desc)}</td><td>${esc(row.qty)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;mi++;}});
+  S.mat.rows.forEach((row,i)=>{const c=R.mat.matCalc[i];if(num(row.qty)>0){matRows+=`<tr><td>${esc(row.item||mi)}</td><td class="l">${esc(row.sku)}</td><td class="l">${esc(row.desc)}</td><td>${esc(row.qty)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;mi++;}});
   if(!matRows)matRows=`<tr><td colspan="6" class="l" style="color:#999">Sin materiales</td></tr>`;
   const matTotal=R.mat.price;
   // Contratos de soporte / renovación <- Contratos
   let conRows='',ci=1;
-  S.con.rows.forEach((row,i)=>{const c=R.con.conCalc[i];if(num(row.qty)>0&&c.pTot>0){conRows+=`<tr><td>${esc(row.item||ci)}</td><td class="l">${esc(row.sku)}</td><td class="l">${esc(row.desc)}</td><td>${esc(row.qty)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;ci++;}});
+  S.con.rows.forEach((row,i)=>{const c=R.con.conCalc[i];if(num(row.qty)>0){conRows+=`<tr><td>${esc(row.item||ci)}</td><td class="l">${esc(row.sku)}</td><td class="l">${esc(row.desc)}</td><td>${esc(row.qty)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;ci++;}});
   if(!conRows)conRows=`<tr><td colspan="6" class="l" style="color:#999">Sin contratos</td></tr>`;
   const conTotal=R.con.price;
   const subtotal=servTotal+mesaTotal+matTotal+conTotal, iva=subtotal*0.16, total=subtotal+iva;
@@ -1267,6 +1350,8 @@ async function exportPDF(){
     #pdfHolder th{background:#E8632A;color:#fff;border:1px solid #E8632A;padding:5px 6px;text-align:center;font-weight:700}
     #pdfHolder td{border:1px solid #e8d6ca;padding:5px 6px;text-align:center;color:#222;vertical-align:top}
     #pdfHolder td.l,#pdfHolder th.l{text-align:left}
+    #pdfHolder .rich{white-space:normal}
+    #pdfHolder .rich ul,#pdfHolder .rich ol{margin:2px 0;padding-left:18px}
     #pdfHolder .fitc{width:1%;white-space:nowrap}#pdfHolder .nw{white-space:nowrap}
     #pdfHolder .qhead{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #E8632A;padding-bottom:12px;margin-bottom:16px}
     #pdfHolder .tot{font-weight:700;background:#fbe9df}
@@ -1365,13 +1450,13 @@ async function exportExcel(){
     exeCell.value={richText:[{font:{bold:true,color:{argb:ORANGE}},text:'Ejecutivo de cuenta\n'},{font:{bold:true},text:'Nombre: '},{text:(p.ejecutivo||'—')+'\n'},{font:{bold:true},text:'E-mail: '},{text:(am?am.email:'—')+'\n'},{font:{bold:true},text:'Teléfono: '},{text:(am?am.telefono:'—')}]};
     [cliCell,exeCell].forEach(c=>{c.alignment={vertical:'top',wrapText:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFDF3EC'}};c.border={top:{style:'thin',color:{argb:LINE}},left:{style:'thin',color:{argb:LINE}},right:{style:'thin',color:{argb:LINE}},bottom:{style:'thin',color:{argb:LINE}}};});
     let r=13;
-    const servData=[];((S.ing.prop&&S.ing.prop.rows)||[]).forEach((row,i)=>{const c=R.prop.rows[i];if(c&&(c.pTot>0||num(row.costo)>0))servData.push([row.partida||(i+1),row.concepto||'',num(row.cant),c.pUnit,c.pTot]);});
+    const servData=[];((S.ing.prop&&S.ing.prop.rows)||[]).forEach((row,i)=>{const c=R.prop.rows[i];if(c&&(c.pTot>0||num(row.costo)>0))servData.push([row.partida||(i+1),htmlToText(row.concepto||''),num(row.cant),c.pUnit,c.pTot]);});
     qh(r,'Servicios profesionales');r++;r=table(q,r,['Partida','Descripción','Cantidad','Precio unitario','Precio total'],servData.length?servData:[['','—',0,0,0]],[3,4]);r=totalRow(q,r,'Total servicios profesionales',R.prop.priceTotal,4);r++;
-    const mesaData=[];((S.sa.cotiz&&S.sa.cotiz.rows)||[]).forEach((row,i)=>{const c=R.sacot.rows[i];if(c&&(c.pTot>0||num(row.costo)>0))mesaData.push([row.partida||(i+1),row.desc||'',num(row.cant),c.pUnit,c.pTot]);});
+    const mesaData=[];((S.sa.cotiz&&S.sa.cotiz.rows)||[]).forEach((row,i)=>{const c=R.sacot.rows[i];if(c&&(c.pTot>0||num(row.costo)>0))mesaData.push([row.partida||(i+1),htmlToText(row.desc||''),num(row.cant),c.pUnit,c.pTot]);});
     qh(r,'Mesa de ayuda / Recursos en sitio');r++;r=table(q,r,['Partida','Descripción','Cantidad','Precio unitario','Precio total'],mesaData.length?mesaData:[['','—',0,0,0]],[3,4]);r=totalRow(q,r,'Total mesa de ayuda / recursos',R.sacot.priceTotal,4);r++;
-    const matData=[];S.mat.rows.forEach((row,i)=>{const c=R.mat.matCalc[i];if(num(row.qty)>0&&c.pTot>0)matData.push([row.item||(i+1),row.sku,row.desc,num(row.qty),c.pUnit,c.pTot]);});
+    const matData=[];S.mat.rows.forEach((row,i)=>{const c=R.mat.matCalc[i];if(num(row.qty)>0)matData.push([row.item||(i+1),row.sku,row.desc,num(row.qty),c.pUnit,c.pTot]);});
     qh(r,'Materiales');r++;r=table(q,r,['No. Item','No. Parte','Descripción','Cantidad','Precio unitario','Precio total'],matData.length?matData:[['','','—',0,0,0]],[4,5]);r=totalRow(q,r,'Total materiales',R.mat.price,5);r++;
-    const conData=[];S.con.rows.forEach((row,i)=>{const c=R.con.conCalc[i];if(num(row.qty)>0&&c.pTot>0)conData.push([row.item||(i+1),row.sku,row.desc,num(row.qty),c.pUnit,c.pTot]);});
+    const conData=[];S.con.rows.forEach((row,i)=>{const c=R.con.conCalc[i];if(num(row.qty)>0)conData.push([row.item||(i+1),row.sku,row.desc,num(row.qty),c.pUnit,c.pTot]);});
     qh(r,'Contratos de soporte / renovación');r++;r=table(q,r,['No. Item','No. Parte','Descripción','Cantidad','Precio unitario','Precio total'],conData.length?conData:[['','','—',0,0,0]],[4,5]);r=totalRow(q,r,'Total contratos',R.con.price,5);r++;
     const sub=R.prop.priceTotal+R.sacot.priceTotal+R.mat.price+R.con.price, iva=sub*0.16;
     r=totalRow(q,r,'Subtotal',sub,5);r=totalRow(q,r,'Impuesto (16%)',iva,5);r=totalRow(q,r,'TOTAL',sub+iva,5);r+=2;
@@ -1778,7 +1863,7 @@ function fillDirectories(){
 }
 function bindHeaderInputs(){
   const map={p_pais:['proyecto','pais'],p_oficina:['proyecto','oficina'],p_oportunidad:['proyecto','oportunidad'],p_crm:['proyecto','crm'],
-    p_fecha:['proyecto','fecha'],p_version:['proyecto','version'],
+    p_fecha:['proyecto','fecha'],
     t_sector:['tecnico','sector'],t_tipoimpl:['tecnico','tipoimpl'],t_soporte:['tecnico','soporte'],t_despliegue:['tecnico','despliegue'],
     t_sitios:['tecnico','sitios'],t_dur:['tecnico','dur'],t_marcas:['tecnico','marcas'],t_notas:['tecnico','notas']};
   for(const id in map){const el=$(id);if(!el)continue;el.oninput=el.onchange=()=>{if(id==='t_dur'){el.value=el.value.replace(/[^0-9]/g,'');}S[map[id][0]][map[id][1]]=el.value;if(id==='p_oficina'){const o=DIR.oficinas.find(x=>x.name===el.value);$('p_ciudad').value=o?o.city:'';}if(el.classList.contains('ta'))autoGrow(el);renderQuote();};}
@@ -1798,7 +1883,7 @@ function pushToInputs(){
   const p=S.proyecto,t=S.tecnico;
   $('p_pais').value=p.pais;$('p_oficina').value=p.oficina;
   $('p_oportunidad').value=p.oportunidad;$('p_crm').value=p.crm;
-  $('p_fecha').value=p.fecha;$('p_version').value=p.version;
+  $('p_fecha').value=p.fecha;setVersion(p.version||'v1');renderHistorial();updateSaveButtons();
   const o=DIR.oficinas.find(x=>x.name===p.oficina);$('p_ciudad').value=o?o.city:'';
   refreshClienteSelect();refreshContactoSelect();refreshPreventaSelect();refreshEjecutivoSelect();
   $('t_sector').value=t.sector;$('t_tipoimpl').value=t.tipoimpl;$('t_soporte').value=t.soporte;$('t_despliegue').value=t.despliegue;
@@ -1809,6 +1894,8 @@ function pushToInputs(){
   $('sa_tickets').value=S.sa.tickets;$('sa_mant').value=S.sa.mant;$('sa_asist').value=S.sa.asist;$('sa_margin').value=(num(S.sa.margin)*100).toFixed(2);
   $('mat_moneda').value=S.mat.moneda;
   $('con_moneda').value=S.con.moneda;
+  $('mat_discG').value=(num(S.mat.disc)*100).toFixed(2);$('mat_marginG').value=(num(S.mat.margin)*100).toFixed(2);$('mat_fx').value=num(S.mat.fx||19);
+  $('con_discG').value=(num(S.con.disc)*100).toFixed(2);$('con_marginG').value=(num(S.con.margin)*100).toFixed(2);$('con_fx').value=num(S.con.fx||19);
   if(!S.comercial)S.comercial={notas:'',condiciones:DEFAULT_CONDICIONES};
   $('c_notas').value=S.comercial.notas||'';$('c_cond').value=S.comercial.condiciones||'';
 }
@@ -1816,10 +1903,10 @@ function pushToInputs(){
 /* ============================ TARIFAS UI ============================ */
 function renderTarifas(){
   const t1=document.querySelector('#rate_profiles tbody');t1.innerHTML='';
-  for(const p in CFG.profiles){t1.innerHTML+=`<tr><td class="l">${p}</td><td><input type="number" step="0.01" value="${CFG.profiles[p]}" oninput="CFG.profiles['${p}']=num(this.value);recompute()"></td></tr>`;}
-  const rt=(id,obj)=>{const b=document.querySelector('#'+id+' tbody');b.innerHTML='';for(const k in obj){b.innerHTML+=`<tr><td class="l">${k}</td><td><input type="number" step="0.01" value="${obj[k]}" oninput="__setRate('${id}','${k}',this.value)"></td></tr>`;}};
+  for(const p in CFG.profiles){t1.innerHTML+=`<tr><td class="l">${p}</td><td><input type="number" step="0.01" value="${num(CFG.profiles[p]).toFixed(2)}" oninput="CFG.profiles['${p}']=num(this.value);recompute()" onblur="this.value=num(this.value).toFixed(2)"></td></tr>`;}
+  const rt=(id,obj)=>{const b=document.querySelector('#'+id+' tbody');b.innerHTML='';for(const k in obj){b.innerHTML+=`<tr><td class="l">${k}</td><td><input type="number" step="0.01" value="${num(obj[k]).toFixed(2)}" oninput="__setRate('${id}','${k}',this.value)" onblur="this.value=num(this.value).toFixed(2)"></td></tr>`;}};
   rt('rate_basic',CFG.basicDevice);rt('rate_adv',CFG.advDevice);rt('rate_end',CFG.endpoint);rt('rate_sla',CFG.sla);rt('rate_arc',CFG.arcSla);
-  document.querySelector('#rate_misc tbody').innerHTML=`<tr><td class="l">Ticket base</td><td><input type="number" value="${CFG.ticketBase}" oninput="CFG.ticketBase=num(this.value);recompute()"></td></tr><tr><td class="l">Carga social</td><td><input type="number" step="0.01" value="${CFG.cargaSocial}" oninput="CFG.cargaSocial=num(this.value)"></td></tr>`;
+  document.querySelector('#rate_misc tbody').innerHTML=`<tr><td class="l">Ticket base (USD)</td><td><input type="number" step="0.01" value="${num(CFG.ticketBase).toFixed(2)}" oninput="CFG.ticketBase=num(this.value);recompute()" onblur="this.value=num(this.value).toFixed(2)"></td></tr>`;
   const mb=document.querySelector('#rate_multi tbody');mb.innerHTML='';
   CFG.multiannual.forEach((b,ix)=>{mb.innerHTML+=`<tr><td class="l">${b.label}</td><td><div class="pctcell"><input type="text" inputmode="decimal" value="${(num(b.d)*100).toFixed(2)}" oninput="__setMulti(${ix},this.value)"><span>%</span></div></td></tr>`;});
   const ab=document.querySelector('#rate_addon tbody');ab.innerHTML='';
@@ -1836,14 +1923,34 @@ function costeoBaseName(){
   const opp=clean(S.proyecto.oportunidad)||'Sin oportunidad';
   const f=String(S.proyecto.fecha||''),m=f.match(/^(\d{4})-(\d{2})-(\d{2})/);
   const fecha=m?(m[3]+'-'+m[2]+'-'+m[1]):'';
-  return `Costeo ${cli} - ${opp}`+(fecha?` - ${fecha}`:'');
+  const ver=String(S.proyecto.version||'v1');
+  return `Costeo ${cli} - ${opp}`+(fecha?` - ${fecha}`:'')+` (${ver})`;
 }
-function saveProject(){
-  syncFromInputs();
-  const payload={state:S,clients:DB_CLIENTS,dirs:{preventa:DIR.preventa,ejecutivos:DIR.ejecutivos}};
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=costeoBaseName()+'.json';a.click();
-}
+/* ===== Guardado y versionado (Guardar / Guardar Cambios) ===== */
+let localFileHandle=null, openedFileName=null, hasFile=false;
+function projectPayload(){return {state:S,clients:DB_CLIENTS,dirs:{preventa:DIR.preventa,ejecutivos:DIR.ejecutivos}};}
+function dlLocal(json,fname){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));a.download=fname;a.click();}
+function bumpVersion(ver,major){const m=/^v?(\d+)(?:\.(\d+))?$/i.exec(String(ver||'v1'));let M=m?+m[1]:1,N=(m&&m[2]!=null)?+m[2]:0;if(major){M+=1;N=0;}else{N+=1;}return 'v'+M+(N>0?('.'+N):'');}
+function setVersion(v){if(!S.proyecto)S.proyecto={};S.proyecto.version=v;const el=$('p_version');if(el)el.value=v;const lbl=$('p_verlbl');if(lbl)lbl.textContent='('+v+')';}
+function updateSaveButtons(){const g=$('btnGuardar'),gc=$('btnGuardarCambios');if(g)g.disabled=hasFile;if(gc)gc.disabled=!hasFile;}
+async function saveLocalNew(json){const fname=openedFileName||(costeoBaseName()+'.json');
+  if(window.showSaveFilePicker){try{const h=await window.showSaveFilePicker({suggestedName:fname,types:[{description:'Proyecto Sipnology',accept:{'application/json':['.json']}}]});const w=await h.createWritable();await w.write(json);await w.close();localFileHandle=h;openedFileName=h.name;return true;}catch(e){if(e&&e.name==='AbortError')return false;}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));a.download=fname;a.click();openedFileName=fname;return true;}
+async function saveLocalSame(json){if(localFileHandle){try{const w=await localFileHandle.createWritable();await w.write(json);await w.close();return true;}catch(e){}}return saveLocalNew(json);}
+async function repoPutJSON(json,fname){const cfg=getGraphCfg();if(!cfg||!cfg.clientId||!cfg.host||!cfg.sitePath)throw new Error('Configura el repositorio (⚙️).');if(location.protocol==='file:')throw new Error('Requiere la versión publicada (https).');const token=await graphToken(cfg);const H={Authorization:'Bearer '+token};const site=await (await fetch(`https://graph.microsoft.com/v1.0/sites/${cfg.host}:${cfg.sitePath}`,{headers:H})).json();if(!site.id)throw new Error('No se encontró el sitio.');const drv=await (await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/drives`,{headers:H})).json();const drive=(drv.value||[]).find(d=>d.name===cfg.library)||(drv.value||[])[0];if(!drive)throw new Error('No se encontró la biblioteca.');const up=await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root:/${encodeURIComponent(fname)}:/content`,{method:'PUT',headers:Object.assign({},H,{'Content-Type':'application/json'}),body:json});if(!up.ok)throw new Error('HTTP '+up.status);return true;}
+async function guardar(){if(hasFile)return;syncFromInputs();if(!S.proyecto.version)setVersion('v1');const json=JSON.stringify(projectPayload(),null,2);const fname=costeoBaseName()+'.json';let okL=false,okR=false,er=[];try{dlLocal(json,fname);okL=true;}catch(e){er.push('Local: '+e.message);}try{okR=await repoPutJSON(json,fname);}catch(e){er.push('Repositorio: '+e.message);}if(okL||okR){hasFile=true;openedFileName=fname;updateSaveButtons();}alert('Guardado '+(S.proyecto.version||'v1')+'\n'+(okL?'✅ Local (Descargas)':'— Local')+'\n'+(okR?'✅ Repositorio':'— Repositorio')+(er.length?('\n\n'+er.join('\n')):''));}
+function guardarCambios(){if(!hasFile){alert('Primero usa "Guardar" para crear el archivo.');return;}syncFromInputs();
+  $('modal').innerHTML=`<h3>Guardar cambios</h3><div class="hint">Se sobrescribe el mismo archivo (local + repositorio) y se incrementa la versión.</div>
+    <div style="margin-top:10px"><label class="f">Tipo de cambio</label><div class="row" style="gap:18px;margin-top:4px"><label class="row" style="gap:6px"><input type="radio" name="verkind" value="menor" checked> Menor <b>${bumpVersion(S.proyecto.version,false)}</b></label><label class="row" style="gap:6px"><input type="radio" name="verkind" value="mayor"> Mayor <b>${bumpVersion(S.proyecto.version,true)}</b></label></div></div>
+    <div style="margin-top:10px"><label class="f">Resumen del cambio (opcional)</label><textarea id="chg_resumen" class="ta" rows="2"></textarea></div>
+    <div class="row" style="margin-top:14px"><button class="btn" onclick="doGuardarCambios()">Guardar cambios</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>`;
+  $('overlay').classList.add('on');}
+async function doGuardarCambios(){const major=((document.querySelector('input[name=verkind]:checked')||{}).value)==='mayor';const resumen=($('chg_resumen')?$('chg_resumen').value:'').trim();const nv=bumpVersion(S.proyecto.version,major);setVersion(nv);if(!Array.isArray(S.historial))S.historial=[];const d=new Date();S.historial.unshift({fecha:d.toISOString().slice(0,10),hora:d.toTimeString().slice(0,5),version:nv,resumen:resumen});closeModal();renderHistorial();renderQuote();
+  const json=JSON.stringify(projectPayload(),null,2);const fname=costeoBaseName()+'.json';openedFileName=fname;let okL=false,okR=false,er=[];try{dlLocal(json,fname);okL=true;}catch(e){er.push('Local: '+e.message);}try{okR=await repoPutJSON(json,fname);}catch(e){er.push('Repositorio: '+e.message);}alert('Versión '+nv+'\n'+(okL?'✅ Local (Descargas)':'— Local')+'\n'+(okR?'✅ Repositorio':'— Repositorio')+(er.length?('\n\n'+er.join('\n')):''));}
+function applyLoaded(j){if(j.state){S=j.state;if(j.clients)DB_CLIENTS=j.clients;if(j.dirs){if(j.dirs.preventa)DIR.preventa=j.dirs.preventa;if(j.dirs.ejecutivos)DIR.ejecutivos=j.dirs.ejecutivos;}}else{S=j;}if(!Array.isArray(S.historial))S.historial=[];if(!S.proyecto.version)S.proyecto.version='v1';}
+async function abrirLocal(){if(window.showOpenFilePicker){try{const [h]=await window.showOpenFilePicker({types:[{description:'Proyecto Sipnology',accept:{'application/json':['.json']}}]});const file=await h.getFile();const j=JSON.parse(await file.text());applyLoaded(j);localFileHandle=h;openedFileName=h.name;hasFile=true;pushToInputs();recompute();updateSaveButtons();alert('Proyecto abierto: '+h.name);return;}catch(e){if(e&&e.name==='AbortError')return;}}$('fileInput').click();}
+function renderHistorial(){const b=$('hist_body');if(!b)return;const h=(S&&Array.isArray(S.historial))?S.historial:[];b.innerHTML=h.length?h.map((r,i)=>`<tr><td class="fitc" style="text-align:center">${esc(r.fecha||'')}</td><td class="fitc" style="text-align:center;color:#E8632A;font-weight:700">${esc(r.version||'')}</td><td class="fitc" style="text-align:center">${esc(r.hora||'')}</td><td class="l"><textarea class="ta" rows="1" data-hist="${i}" style="width:100%">${esc(r.resumen||'')}</textarea></td></tr>`).join(''):`<tr><td colspan="4" class="l" style="color:#999">Sin cambios registrados aún.</td></tr>`;
+  b.querySelectorAll('[data-hist]').forEach(el=>{el.oninput=()=>{S.historial[+el.dataset.hist].resumen=el.value;autoGrow(el);};});}
 
 /* ===== Repositorio M365 (SharePoint vía Microsoft Graph / Entra ID) ===== */
 const GRAPH_KEY='sip_graph_cfg';
@@ -1925,18 +2032,16 @@ async function repoOpenFile(itemId){
     const url=meta['@microsoft.graph.downloadUrl']||meta['@content.downloadUrl'];
     if(!url)throw new Error('No se obtuvo la URL de descarga.');
     const j=JSON.parse(await (await fetch(url)).text());
-    if(j.state){S=j.state;if(j.clients)DB_CLIENTS=j.clients;if(j.dirs){if(j.dirs.preventa)DIR.preventa=j.dirs.preventa;if(j.dirs.ejecutivos)DIR.ejecutivos=j.dirs.ejecutivos;}}else{S=j;}
-    closeModal();pushToInputs();recompute();alert('✅ Proyecto abierto desde el repositorio.');
+    applyLoaded(j);localFileHandle=null;openedFileName=(meta&&meta.name)||openedFileName;hasFile=true;
+    closeModal();pushToInputs();recompute();updateSaveButtons();alert('✅ Proyecto abierto desde el repositorio: '+(openedFileName||''));
   }catch(e){alert('No se pudo abrir el archivo: '+e.message);console.error(e);}
 }
 function loadProject(ev){
   const f=ev.target.files[0];if(!f)return;const rd=new FileReader();
-  rd.onload=()=>{try{const j=JSON.parse(rd.result);
-    if(j.state){S=j.state;if(j.clients)DB_CLIENTS=j.clients;if(j.dirs){if(j.dirs.preventa)DIR.preventa=j.dirs.preventa;if(j.dirs.ejecutivos)DIR.ejecutivos=j.dirs.ejecutivos;}}else{S=j;}
-    pushToInputs();recompute();alert('Proyecto cargado.');}catch(e){alert('Archivo inválido');}};
+  rd.onload=()=>{try{const j=JSON.parse(rd.result);applyLoaded(j);localFileHandle=null;openedFileName=f.name;hasFile=true;pushToInputs();recompute();updateSaveButtons();alert('Proyecto abierto: '+f.name);}catch(e){alert('Archivo inválido');}};
   rd.readAsText(f);
 }
-function newProject(){if(confirm('¿Empezar un proyecto nuevo? Se perderán los datos no guardados.')){S=defaultState();pushToInputs();recompute();}}
+function newProject(){if(confirm('¿Empezar un proyecto nuevo? Se perderán los datos no guardados.')){S=defaultState();localFileHandle=null;openedFileName=null;hasFile=false;pushToInputs();recompute();updateSaveButtons();}}
 
 /* ===== Persistencia: guardar datos capturados como base ===== */
 const BASE_KEY='sip_costeo_base';
@@ -1969,9 +2074,10 @@ function fcInitDrag(){const el=$('floatCalc'),h=$('fcHead');if(!el||!h)return;le
   el.querySelectorAll('.fck').forEach(b=>b.addEventListener('click',()=>fcPress(b.dataset.k)));}
 
 /* ============================ TABS ============================ */
-const VIEWS=[['proyecto','Registro Proyecto'],['ingenieria','Calculadora Ingeniería'],['sa','Calculadora Serv. Admin'],['materiales','Materiales y Contratos'],['resumen','Resumen Financiero'],['comercial','Condiciones comerciales'],['cotizacion','Cotización'],['tarifas','Tarifas']];
+const VIEWS=[['proyecto','Registro Proyecto'],['ingenieria','Calculadora Ingeniería'],['sa','Calculadora Serv. Admin'],['materiales','Materiales y Contratos'],['comercial','Condiciones comerciales'],['resumen','Resumen Financiero'],['cotizacion','Cotización'],['tarifas','Tarifas']];
 function buildTabs(){$('tabs').innerHTML=VIEWS.map(v=>`<div class="tab" data-t="${v[0]}" onclick="showView('${v[0]}')">${v[1]}</div>`).join('');}
-function showView(v){document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.dataset.view===v));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.t===v));requestAnimationFrame(growAll);}
+let tarifasUnlocked=false;
+function showView(v){if(v==='tarifas'&&!tarifasUnlocked){const p=prompt('Pestaña restringida. Ingresa la contraseña de administrador:');if(p!=='Sipnology123!'){if(p!==null)alert('Contraseña incorrecta.');return;}tarifasUnlocked=true;}document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.dataset.view===v));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.t===v));requestAnimationFrame(growAll);}
 
 /* ============================ INIT ============================ */
 function init(){
