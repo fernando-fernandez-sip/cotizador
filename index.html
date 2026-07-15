@@ -1377,17 +1377,26 @@ async function exportPDF(){
     if(imgH<=pageInner){
       pdf.addImage(img,'PNG',margin,margin,imgW,imgH);
     } else {
-      // Partir en varias páginas
+      // Partir en varias páginas cortando SOLO en límites de fila/sección (no a media fila)
       const pageCanvasH=Math.floor(canvas.width*pageInner/imgW);
-      let y=0, first=true;
-      while(y<canvas.height){
-        const slice=document.createElement('canvas');
-        slice.width=canvas.width; slice.height=Math.min(pageCanvasH,canvas.height-y);
-        const ctx=slice.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,slice.width,slice.height);
-        ctx.drawImage(canvas,0,y,canvas.width,slice.height,0,0,canvas.width,slice.height);
+      const ratio=canvas.width/holder.offsetWidth;
+      const hTop=holder.getBoundingClientRect().top;
+      const bset=new Set();
+      holder.querySelectorAll('tr,h3,table,.qhead,.cond,.sign,p').forEach(el=>{const t=(el.getBoundingClientRect().top-hTop)*ratio;if(t>4)bset.add(Math.round(t));});
+      const breaks=[...bset].sort((a,b)=>a-b);
+      let y=0, first=true, guard=0;
+      while(y<canvas.height-1 && guard++<200){
+        const ideal=y+pageCanvasH;
+        let cut;
+        if(ideal>=canvas.height){cut=canvas.height;}
+        else{cut=0;for(const bp of breaks){if(bp>y+20&&bp<=ideal)cut=bp;}if(cut<=y)cut=ideal;}
+        const sliceH=Math.max(1,cut-y);
+        const slice=document.createElement('canvas');slice.width=canvas.width;slice.height=sliceH;
+        const ctx=slice.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,slice.width,slice.height);
+        ctx.drawImage(canvas,0,y,canvas.width,sliceH,0,0,canvas.width,sliceH);
         if(!first)pdf.addPage();
-        pdf.addImage(slice.toDataURL('image/png'),'PNG',margin,margin,imgW,slice.height*imgW/canvas.width);
-        first=false; y+=slice.height;
+        pdf.addImage(slice.toDataURL('image/png'),'PNG',margin,margin,imgW,sliceH*imgW/canvas.width);
+        first=false; y=cut;
       }
     }
     pdf.save(costeoBaseName()+'.pdf');
