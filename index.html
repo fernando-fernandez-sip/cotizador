@@ -2084,17 +2084,66 @@ async function repoOpen(){
     const drv=await (await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/drives`,{headers:H})).json();
     const drive=(drv.value||[]).find(d=>d.name===cfg.library)||(drv.value||[])[0];
     if(!drive)throw new Error('No se encontró la biblioteca "'+cfg.library+'".');
-    const list=await (await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root/children?$top=500`,{headers:H})).json();
-    const files=(list.value||[]).filter(x=>x.file&&/\.json$/i.test(x.name)).sort((a,b)=>(b.lastModifiedDateTime||'').localeCompare(a.lastModifiedDateTime||''));
-    if(!files.length){alert('No hay cotizaciones (.json) guardadas en el repositorio.');return;}
-    repoOpen._drive=drive.id; repoOpen._H=H;
-    $('modal').innerHTML=`<h3>Abrir del repositorio</h3><div class="hint">Cotizaciones guardadas en SharePoint (${files.length}).</div>
-      <div style="max-height:360px;overflow:auto;margin-top:10px">${files.map(f=>`<div class="row" style="justify-content:space-between;align-items:center;border-bottom:1px solid #2b2b2b;padding:8px 4px;gap:10px"><div class="l" style="min-width:0"><div style="font-weight:600;word-break:break-word">${esc(f.name)}</div><div class="small">${f.lastModifiedDateTime?new Date(f.lastModifiedDateTime).toLocaleString():''}</div></div><button class="btn" data-openid="${esc(f.id)}">Abrir</button></div>`).join('')}</div>
-      <div class="row" style="margin-top:12px"><button class="btn sec" onclick="closeModal()">Cerrar</button></div>`;
+    repoOpen._drive=drive.id; repoOpen._H=H; repoOpen._stack=[{id:'root',name:cfg.library||'Repositorio'}];
+    const inStyle='width:100%;box-sizing:border-box;margin:6px 0 4px;padding:8px 10px;background:#1c1c1c;border:1px solid #3a3a3a;border-radius:6px;color:#eee;font-size:13px';
+    $('modal').innerHTML=`<h3>Abrir del repositorio</h3>
+      <input id="repoSearch" placeholder="🔍 Buscar por nombre en todo el repositorio…" oninput="repoSearchInput()" autocomplete="off" style="${inStyle}">
+      <div id="repoCrumb" class="small" style="margin:4px 0 6px;line-height:1.8"></div>
+      <div id="repoList" style="max-height:360px;overflow:auto;border-top:1px solid #2b2b2b">Cargando…</div>
+      <div class="row" style="margin-top:12px;justify-content:space-between;align-items:center"><span class="small" id="repoCount"></span><button class="btn sec" onclick="closeModal()">Cerrar</button></div>`;
     $('overlay').classList.add('on');
-    document.querySelectorAll('[data-openid]').forEach(b=>b.onclick=()=>repoOpenFile(b.dataset.openid));
-  }catch(e){alert('No se pudo listar el repositorio: '+e.message);console.error(e);}
+    repoBrowse('root');
+  }catch(e){alert('No se pudo abrir el repositorio: '+e.message);console.error(e);}
 }
+function repoCrumb(){
+  const st=repoOpen._stack||[];
+  $('repoCrumb').innerHTML=st.map((f,i)=>`<span data-crumb="${i}" style="cursor:pointer;color:${i===st.length-1?'#E8632A':'#8fb7ff'}">${esc(f.name)}</span>`).join(' <span style="color:#666">/</span> ');
+  $('repoCrumb').querySelectorAll('[data-crumb]').forEach(el=>el.onclick=()=>repoCrumbTo(+el.dataset.crumb));
+}
+function repoCrumbTo(i){repoOpen._stack=repoOpen._stack.slice(0,i+1);const s=$('repoSearch');if(s)s.value='';repoBrowse(repoOpen._stack[i].id,true);}
+function repoEnter(id,name){repoOpen._stack.push({id,name});const s=$('repoSearch');if(s)s.value='';repoBrowse(id,true);}
+async function repoBrowse(folderId,keepStack){
+  const H=repoOpen._H,drive=repoOpen._drive;
+  if(!keepStack&&folderId==='root')repoOpen._stack=[repoOpen._stack[0]||{id:'root',name:'Repositorio'}];
+  repoCrumb();
+  const box=$('repoList');if(box)box.textContent='Cargando…';
+  try{
+    const path=folderId==='root'?'root/children':`items/${folderId}/children`;
+    const r=await (await fetch(`https://graph.microsoft.com/v1.0/drives/${drive}/${path}?$top=999&$select=id,name,folder,file,lastModifiedDateTime`,{headers:H})).json();
+    const all=r.value||[];
+    const folders=all.filter(x=>x.folder).sort((a,b)=>a.name.localeCompare(b.name));
+    const files=all.filter(x=>x.file&&/\.json$/i.test(x.name)).sort((a,b)=>(b.lastModifiedDateTime||'').localeCompare(a.lastModifiedDateTime||''));
+    box.innerHTML=(folders.map(repoFolderRow).join('')+files.map(f=>repoFileRow(f)).join(''))||`<div class="small" style="padding:12px">Carpeta vacía (sin subcarpetas ni cotizaciones .json).</div>`;
+    $('repoCount').textContent=`${folders.length} carpeta(s) · ${files.length} cotización(es)`;
+    repoBindList();
+  }catch(e){box.innerHTML=`<div class="small" style="padding:12px;color:#e88">Error: ${esc(e.message)}</div>`;}
+}
+function repoFolderRow(f){return `<div class="row" data-enterid="${esc(f.id)}" data-entername="${esc(f.name)}" style="align-items:center;border-bottom:1px solid #2b2b2b;padding:8px 4px;gap:10px;cursor:pointer"><span style="font-size:16px">📁</span><div class="l" style="min-width:0;flex:1"><div style="font-weight:600;word-break:break-word">${esc(f.name)}</div></div><span class="small">Abrir carpeta ›</span></div>`;}
+function repoFileRow(f,sub){return `<div class="row" style="justify-content:space-between;align-items:center;border-bottom:1px solid #2b2b2b;padding:8px 4px;gap:10px"><div class="l" style="min-width:0"><div style="font-weight:600;word-break:break-word">📄 ${esc(f.name)}</div><div class="small">${f.lastModifiedDateTime?new Date(f.lastModifiedDateTime).toLocaleString():''}${sub?' · '+esc(sub):''}</div></div><button class="btn" data-openid="${esc(f.id)}">Abrir</button></div>`;}
+function repoBindList(){
+  $('repoList').querySelectorAll('[data-enterid]').forEach(el=>el.onclick=()=>repoEnter(el.dataset.enterid,el.dataset.entername));
+  $('repoList').querySelectorAll('[data-openid]').forEach(el=>el.onclick=(ev)=>{ev.stopPropagation();repoOpenFile(el.dataset.openid);});
+}
+let repoSearchT=null;
+function repoSearchInput(){
+  clearTimeout(repoSearchT);
+  const q=(($('repoSearch')||{}).value||'').trim();
+  repoSearchT=setTimeout(()=>{const cur=repoOpen._stack[repoOpen._stack.length-1];if(q.length<2){repoBrowse(cur.id,true);}else{repoSearch(q);}},300);
+}
+async function repoSearch(q){
+  const H=repoOpen._H,drive=repoOpen._drive;
+  $('repoCrumb').innerHTML=`<span style="color:#E8632A">Resultados de búsqueda: “${esc(q)}”</span>`;
+  const box=$('repoList');box.textContent='Buscando…';
+  try{
+    const qq=encodeURIComponent(q.replace(/'/g,"''"));
+    const r=await (await fetch(`https://graph.microsoft.com/v1.0/drives/${drive}/root/search(q='${qq}')?$top=200&$select=id,name,folder,file,lastModifiedDateTime,parentReference`,{headers:H})).json();
+    const files=(r.value||[]).filter(x=>x.file&&/\.json$/i.test(x.name)).sort((a,b)=>(b.lastModifiedDateTime||'').localeCompare(a.lastModifiedDateTime||''));
+    box.innerHTML=files.length?files.map(f=>repoFileRow(f,repoPathLabel(f))).join(''):`<div class="small" style="padding:12px">Sin coincidencias para “${esc(q)}”.</div>`;
+    $('repoCount').textContent=`${files.length} resultado(s)`;
+    repoBindList();
+  }catch(e){box.innerHTML=`<div class="small" style="padding:12px;color:#e88">Error de búsqueda: ${esc(e.message)}</div>`;}
+}
+function repoPathLabel(f){const p=(f.parentReference&&f.parentReference.path)||'';const m=(p.split('root:')[1]||'');const c=decodeURIComponent(m).replace(/^\//,'');return c?('📁 '+c):'';}
 async function repoOpenFile(itemId){
   try{
     const H=repoOpen._H,drive=repoOpen._drive;
