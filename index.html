@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.7.1/lib/msal-browser.min.js"></script>
 <style>
 :root{
@@ -451,7 +452,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
   <section class="view" data-view="cotizacion">
     <div class="card">
       <div class="row"><h2 style="margin:0">Vista previa de cotización</h2>
-        <button class="btn right" onclick="exportPDF()">⬇️ Descargar PDF</button>
+        <button class="btn right" onclick="exportPDFnative()">⬇️ Descargar PDF</button>
       </div>
       <div class="hint">Descarga como PDF para el cliente.</div>
       <div id="quoteDoc"></div>
@@ -1402,6 +1403,66 @@ async function exportPDF(){
     pdf.save(costeoBaseName()+'.pdf');
   }catch(e){alert('Error al generar el PDF: '+e.message);console.error(e);}
   finally{document.body.removeChild(holder);}
+}
+/* PDF nativo (autoTable): texto vectorial, archivos livianos, sin cortar filas */
+async function exportPDFnative(){
+  if(!window.jspdf){alert('No se pudo cargar jsPDF (requiere internet).');return;}
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF('p','mm','a4');
+  if(typeof doc.autoTable!=='function'){alert('No se cargó jspdf-autotable (requiere internet).');return;}
+  syncFromInputs(); const R=compute(), p=S.proyecto, cur=S.ing.moneda;
+  const off=DIR.oficinas.find(o=>o.name===p.oficina)||{city:''};
+  const cli=findClient(p.empresa), cont=cli?cli.contactos.find(c=>c.nombre===p.contacto):null, am=DIR.ejecutivos.find(x=>x.nombre===p.ejecutivo);
+  const BR=[232,99,42], TOT=[251,233,223], LN=[232,214,202], INFO=[253,243,236];
+  const M=12, pw=doc.internal.pageSize.getWidth(), ph=doc.internal.pageSize.getHeight(), cw=pw-2*M;
+  let yy=M;
+  try{const s=(LOGO_SVG.match(/src="([^"]+)"/)||[])[1];if(s){const png=await svgToPng(s,320,120);doc.addImage(png,'PNG',M,yy,34,12.75);}}catch(e){}
+  doc.setFontSize(8.5);doc.setTextColor(120);doc.setFont(undefined,'normal');doc.text(`${p.oficina} · ${off.city}`,M,yy+16.5);
+  doc.setFontSize(17);doc.setTextColor(BR[0],BR[1],BR[2]);doc.setFont(undefined,'bold');doc.text('COTIZACIÓN',pw-M,yy+4,{align:'right'});
+  doc.setFontSize(9);doc.setTextColor(90);doc.setFont(undefined,'normal');
+  doc.text('Fecha: '+p.fecha,pw-M,yy+9,{align:'right'});doc.text('ID: '+(p.crm||'—'),pw-M,yy+13,{align:'right'});doc.text('Válida por: 15 días',pw-M,yy+17,{align:'right'});
+  yy+=21;doc.setDrawColor(BR[0],BR[1],BR[2]);doc.setLineWidth(0.7);doc.line(M,yy,pw-M,yy);yy+=4;
+  doc.autoTable({startY:yy,theme:'grid',body:[[
+    `Cliente: ${p.empresa||'—'}\nNombre: ${cont?cont.nombre:'—'}\nE-mail: ${cont?cont.email:'—'}\nTeléfono: ${cont?cont.telefono:'—'}\nDirección: ${cli?cli.direccion:'—'}`,
+    `Ejecutivo de cuenta\nNombre: ${p.ejecutivo||'—'}\nE-mail: ${am?am.email:'—'}\nTeléfono: ${am?am.telefono:'—'}`]],
+    styles:{fontSize:8.5,cellPadding:3,fillColor:INFO,textColor:40,lineColor:LN,lineWidth:0.2,valign:'top'},
+    columnStyles:{0:{cellWidth:cw*0.56},1:{cellWidth:cw*0.44}},margin:{left:M,right:M}});
+  yy=doc.lastAutoTable.finalY+5;
+  const sect=(title,head,body,total,tlabel,cols)=>{
+    if(yy>ph-28){doc.addPage();yy=M;}
+    doc.setFontSize(11);doc.setTextColor(BR[0],BR[1],BR[2]);doc.setFont(undefined,'bold');doc.text(title,M,yy);
+    doc.autoTable({startY:yy+2,head:[head],
+      body:body.length?body:[[{content:'Sin partidas',colSpan:head.length,styles:{halign:'left',textColor:150}}]],
+      foot:[[{content:tlabel,colSpan:head.length-1,styles:{halign:'right',fontStyle:'bold'}},n2(total)]],
+      theme:'grid',headStyles:{fillColor:BR,textColor:255,fontStyle:'bold',halign:'center',fontSize:7.5},
+      footStyles:{fillColor:TOT,textColor:20,fontStyle:'bold',fontSize:8,halign:'right'},
+      bodyStyles:{fontSize:7.5,textColor:34,valign:'top',lineColor:LN,lineWidth:0.2},
+      columnStyles:cols,margin:{left:M,right:M}});
+    yy=doc.lastAutoTable.finalY+4;
+  };
+  const serv=[];((S.ing.prop&&S.ing.prop.rows)||[]).forEach((r,i)=>{const c=R.prop.rows[i];if(num(r.cant)>0)serv.push([String(r.partida||(i+1)),htmlToText(r.concepto||''),String(num(r.cant)),n2(c.pUnit),n2(c.pTot)]);});
+  sect('Servicios profesionales',['Partida','Descripción','Cantidad','Precio unitario','Precio total'],serv,R.prop.priceTotal,'Total servicios profesionales',{0:{halign:'center',cellWidth:15},1:{halign:'left'},2:{halign:'center',cellWidth:18},3:{halign:'right',cellWidth:27},4:{halign:'right',cellWidth:27}});
+  const mesa=[];((S.sa.cotiz&&S.sa.cotiz.rows)||[]).forEach((r,i)=>{const c=R.sacot.rows[i];if(num(r.cant)>0)mesa.push([String(r.partida||(i+1)),htmlToText(r.desc||''),String(num(r.cant)),n2(c.pUnit),n2(c.pTot)]);});
+  sect('Mesa de ayuda / Recursos en sitio',['Partida','Descripción','Cantidad','Precio unitario','Precio total'],mesa,R.sacot.priceTotal,'Total mesa de ayuda / recursos',{0:{halign:'center',cellWidth:15},1:{halign:'left'},2:{halign:'center',cellWidth:18},3:{halign:'right',cellWidth:27},4:{halign:'right',cellWidth:27}});
+  const mat=[];S.mat.rows.forEach((row,i)=>{const c=R.mat.matCalc[i];if(num(row.qty)>0)mat.push([String(row.item||(i+1)),String(row.sku||''),String(row.desc||''),String(num(row.qty)),n2(c.pUnit),n2(c.pTot)]);});
+  sect('Materiales',['No. Item','No. Parte','Descripción','Cantidad','Precio unitario','Precio total'],mat,R.mat.price,'Total materiales',{0:{halign:'center',cellWidth:13},1:{halign:'left',cellWidth:25},2:{halign:'left'},3:{halign:'center',cellWidth:16},4:{halign:'right',cellWidth:24},5:{halign:'right',cellWidth:24}});
+  const con=[];S.con.rows.forEach((row,i)=>{const c=R.con.conCalc[i];if(num(row.qty)>0)con.push([String(row.item||(i+1)),String(row.sku||''),String(row.desc||''),String(num(row.qty)),n2(c.pUnit),n2(c.pTot)]);});
+  sect('Contratos de soporte / renovación',['No. Item','No. Parte','Descripción','Cantidad','Precio unitario','Precio total'],con,R.con.price,'Total contratos',{0:{halign:'center',cellWidth:13},1:{halign:'left',cellWidth:25},2:{halign:'left'},3:{halign:'center',cellWidth:16},4:{halign:'right',cellWidth:24},5:{halign:'right',cellWidth:24}});
+  const sub=R.prop.priceTotal+R.sacot.priceTotal+R.mat.price+R.con.price, iva=sub*0.16, tot=sub+iva;
+  if(yy>ph-34){doc.addPage();yy=M;}
+  doc.autoTable({startY:yy,theme:'grid',
+    body:[['Subtotal',n2(sub)],['Impuesto (16%)',n2(iva)],[{content:'TOTAL',styles:{fontStyle:'bold',fillColor:TOT}},{content:n2(tot),styles:{fontStyle:'bold',fillColor:TOT}}]],
+    styles:{fontSize:9,lineColor:LN,lineWidth:0.2},columnStyles:{0:{halign:'right',cellWidth:38},1:{halign:'right',cellWidth:34}},
+    margin:{left:pw-M-72,right:M}});
+  yy=doc.lastAutoTable.finalY+5;
+  const co=S.comercial||{};
+  const addTxt=(title,txt)=>{if(!txt)return;if(yy>ph-24){doc.addPage();yy=M;}doc.setFontSize(11);doc.setTextColor(BR[0],BR[1],BR[2]);doc.setFont(undefined,'bold');doc.text(title,M,yy);yy+=5;doc.setFontSize(8.5);doc.setTextColor(51);doc.setFont(undefined,'normal');doc.splitTextToSize(txt,cw).forEach(ln=>{if(yy>ph-14){doc.addPage();yy=M;}doc.text(ln,M,yy);yy+=4;});yy+=3;};
+  if(co.notas)addTxt('Notas',co.notas);
+  addTxt('Condiciones comerciales',(cur==='USD'?'Cotización expresada en Dólares Americanos (USD).\n\n':'Cotización expresada en Pesos Mexicanos (MXN).\n\n')+(co.condiciones||''));
+  if(yy>ph-28){doc.addPage();yy=M;}yy+=12;
+  doc.setDrawColor(120);doc.setLineWidth(0.3);doc.line(M+8,yy,M+68,yy);doc.line(pw-M-68,yy,pw-M-8,yy);yy+=5;
+  doc.setFontSize(9);doc.setTextColor(60);doc.setFont(undefined,'bold');doc.text('Sipnology',M+38,yy,{align:'center'});doc.text('CLIENTE',pw-M-38,yy,{align:'center'});
+  doc.save(costeoBaseName()+'.pdf');
 }
 
 /* ============================ EXCEL EXPORT (branded, todos los datos) ============================ */
