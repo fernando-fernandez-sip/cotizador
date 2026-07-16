@@ -231,7 +231,12 @@ tr.subtot td{background:#0c2033;font-weight:700}
     </div>
 
     <div class="card">
-      <div class="row"><h3 style="margin:0">CALCULADORA SUBCONTRATACIÓN / EXTRAS</h3></div>
+      <div class="row" style="align-items:flex-end;gap:16px">
+        <h3 style="margin:0">CALCULADORA SUBCONTRATACIÓN / EXTRAS</h3>
+        <div style="width:120px"><label class="f">Moneda</label><select id="subc_moneda" onchange="S.ing.subc.moneda=this.value;recompute()"><option>MXN</option><option>USD</option></select></div>
+        <div style="width:110px"><label class="f">Tipo de cambio</label><input id="subc_fx" type="number" step="0.01" value="20" oninput="S.ing.subc.fx=num(this.value)"></div>
+        <button class="btn sec" onclick="convertSubc()" title="Convierte el Costo Unitario entre MXN y USD">🔁 Convertir</button>
+      </div>
       <table id="subc_table" style="margin-top:8px">
         <thead><tr><th class="l">Concepto</th><th class="fit">Cantidad</th><th class="fit">Costo Unitario</th><th class="fit">Margen</th><th class="nw">Costo total</th><th class="nw">Precio total</th><th class="l">Notas</th><th></th></tr></thead>
         <tbody id="subc_body"></tbody>
@@ -318,6 +323,26 @@ tr.subtot td{background:#0c2033;font-weight:700}
         <div class="kpi cost"><div class="lab">Costo total</div><div class="val" id="onsite_cost">–</div></div>
         <div class="kpi"><div class="lab">Margen</div><div class="val" id="onsite_marg">–</div></div>
         <div class="kpi good"><div class="lab">Precio total</div><div class="val" id="onsite_price">–</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="align-items:flex-end;gap:16px">
+        <h3 style="margin:0">CALCULADORA SERVICIO ADMINISTRADO</h3>
+        <div style="width:120px"><label class="f">Moneda</label><select id="sacalc_moneda" onchange="S.sa.sacalc.moneda=this.value;recompute()"><option>MXN</option><option>USD</option></select></div>
+        <div style="width:110px"><label class="f">Tipo de cambio</label><input id="sacalc_fx" type="number" step="0.01" value="20" oninput="S.sa.sacalc.fx=num(this.value)"></div>
+        <button class="btn sec" onclick="convertSacalc()" title="Convierte el Costo Unitario entre MXN y USD">🔁 Convertir</button>
+      </div>
+      <div class="hint">Calculadora de apoyo independiente. <b>No se refleja en el Resumen Financiero.</b> Precio = (Costo Unitario ÷ (1 − Margen)) × Cantidad.</div>
+      <table id="sacalc_table" style="margin-top:8px">
+        <thead><tr><th class="l">Concepto</th><th class="fit">Cantidad</th><th class="fit">Costo Unitario</th><th class="fit">Margen</th><th class="nw">Costo total</th><th class="nw">Precio total</th><th class="l">Notas</th><th></th></tr></thead>
+        <tbody id="sacalc_body"></tbody>
+      </table>
+      <div style="margin-top:8px"><button class="mini add" onclick="addSacalc()">＋ Agregar fila</button></div>
+      <div class="kpis" style="margin-top:12px;grid-template-columns:repeat(3,1fr)">
+        <div class="kpi cost"><div class="lab">Costo Servicio Administrado</div><div class="val" id="sacalc_cost">–</div></div>
+        <div class="kpi good"><div class="lab">Precio Servicio Administrado</div><div class="val" id="sacalc_price">–</div></div>
+        <div class="kpi"><div class="lab">Margen real</div><div class="val" id="sacalc_marg">–</div></div>
       </div>
     </div>
 
@@ -621,7 +646,8 @@ function defaultState(){
          trips:defaultTrips()},
     sa:{despliegue:'Centralizado',servicio:'Advanced',cobertura:'Local',sla:'24x7',dur:12,moneda:'MXN',fx:20,tickets:0,mant:'-',asist:'-',margin:0.4,
         add:{mant:'-',asist:'-',nac:'-',intl:'-'}, dev:{basic:{},adv:{},end:{}}, onsite:[],
-        cotiz:{rows:[{partida:'',desc:'',cant:1,costo:0,nota:''},{partida:'',desc:'',cant:1,costo:0,nota:''}]}},
+        cotiz:{rows:[{partida:'',desc:'',cant:1,costo:0,nota:''},{partida:'',desc:'',cant:1,costo:0,nota:''}]},
+        sacalc:{moneda:'MXN',fx:20,rows:[{concepto:'',cant:1,costo:0,margin:0.1,nota:''},{concepto:'',cant:1,costo:0,margin:0,nota:''}]}},
     mat:{fx:19,disc:0.15,margin:0.15,moneda:'MXN',tax:0,freight:0,rows:[]},
     con:{disc:0.15,margin:0.2,moneda:'MXN',fx:19,rows:[]}
   };
@@ -750,6 +776,12 @@ function compute(){
     scRows.push({baseUnit,cost,price}); scCost+=cost;scPrice+=price;
   });
   R.subc={cost:scCost,price:scPrice,rows:scRows,marg:scPrice?((scPrice-scCost)/scPrice):0};
+
+  /* Calculadora Servicio Administrado (independiente, NO entra al Resumen Financiero) */
+  const xac=S.sa.sacalc||{rows:[]};
+  let xaCost=0,xaPrice=0; const xaRows=[];
+  (xac.rows||[]).forEach(r=>{const bu=num(r.costo);const cost=bu*num(r.cant);const mm=num(r.margin);const price=mm<1?(bu/(1-mm))*num(r.cant):0;xaRows.push({baseUnit:bu,cost,price});xaCost+=cost;xaPrice+=price;});
+  R.sacalc={cost:xaCost,price:xaPrice,rows:xaRows,marg:xaPrice?((xaPrice-xaCost)/xaPrice):0};
 
   /* Propuesta Ingeniería (calculadora independiente, mismas fórmulas que Subcontratación) */
   const pc=S.ing.prop||{rows:[]};
@@ -986,7 +1018,7 @@ function renderIng(){
   if(!bb.innerHTML)bb.innerHTML=`<tr><td class="l" colspan="4" style="color:#888">Sin horas capturadas</td></tr>`;
 
   // Subcontratación
-  const scur=S.ing.moneda;
+  const scur=(S.ing.subc&&S.ing.subc.moneda)||S.ing.moneda;
   const sb=$('subc_body'); sb.innerHTML='';
   S.ing.subc.rows.forEach((r,i)=>{
     const c=R.subc.rows[i];
@@ -1170,6 +1202,35 @@ function renderSA(){
   };});
   document.querySelectorAll('[data-delcot]').forEach(el=>{el.onclick=()=>{S.sa.cotiz.rows.splice(+el.dataset.delcot,1);recompute();};});
   document.querySelectorAll('#sacot_body input.numw').forEach(el=>{sizeMoney(el);el.onfocus=()=>{const v=num(el.value);el.value=(v===0?'':String(v));sizeMoney(el);};el.onblur=()=>{el.value=n2(num(el.value));sizeMoney(el);};});
+
+  // Calculadora Servicio Administrado (independiente; NO afecta Resumen Financiero)
+  if(!S.sa.sacalc)S.sa.sacalc={moneda:'MXN',fx:20,rows:[]};
+  const xcur=S.sa.sacalc.moneda||'MXN';
+  const xb=$('sacalc_body');
+  if(xb){
+    xb.innerHTML='';
+    S.sa.sacalc.rows.forEach((r,i)=>{
+      const c=(R.sacalc&&R.sacalc.rows[i])||{cost:0,price:0};
+      const tr=document.createElement('tr');tr.dataset.dndg='sacalc';tr.dataset.dndi=i;
+      tr.innerHTML=`<td class="l"><div style="display:flex;align-items:center;gap:3px">${grip('sacalc',i)}<textarea class="ta" rows="1" data-sacx="${i}" data-k="concepto" style="flex:1;min-width:0">${esc(r.concepto)}</textarea></div></td>
+        <td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-sacx="${i}" data-k="cant" value="${r.cant}"></td>
+        <td class="fit" style="text-align:center"><input class="numw" type="text" inputmode="decimal" data-sacx="${i}" data-k="costo" value="${n2(r.costo)}"></td>
+        <td class="fit" style="text-align:center"><div class="pctcell"><input class="num" type="text" inputmode="decimal" data-sacx="${i}" data-k="margin_pct" value="${(num(r.margin)*100).toFixed(2)}"><span>%</span></div></td>
+        <td class="cost fit tight">${n2(c.cost)}</td>
+        <td class="calc fit tight">${n2(c.price)}</td>
+        <td class="l"><textarea class="ta" rows="1" data-sacx="${i}" data-k="nota" style="width:100%">${esc(r.nota||'')}</textarea></td>
+        <td>${copyBtn('sacalc',i)}<button class="mini del" data-delsacx="${i}">✕</button></td>`;
+      xb.appendChild(tr);
+    });
+    if(R.sacalc){$('sacalc_cost').textContent=money(R.sacalc.cost,xcur);$('sacalc_price').textContent=money(R.sacalc.price,xcur);$('sacalc_marg').textContent=pct(R.sacalc.marg);}
+    document.querySelectorAll('[data-sacx]').forEach(el=>{el.oninput=()=>{const i=+el.dataset.sacx,k=el.dataset.k;
+      if(k==='concepto'||k==='nota'){S.sa.sacalc.rows[i][k]=el.value;autoGrow(el);}
+      else if(k==='margin_pct'){S.sa.sacalc.rows[i].margin=num(el.value)/100;recompute();}
+      else{S.sa.sacalc.rows[i][k]=num(el.value);recompute();}
+    };});
+    document.querySelectorAll('[data-delsacx]').forEach(el=>{el.onclick=()=>{S.sa.sacalc.rows.splice(+el.dataset.delsacx,1);recompute();};});
+    document.querySelectorAll('#sacalc_body input.numw').forEach(el=>{sizeMoney(el);el.onfocus=()=>{const v=num(el.value);el.value=(v===0?'':String(v));sizeMoney(el);};el.onblur=()=>{el.value=n2(num(el.value));sizeMoney(el);};});
+  }
 }
 function addCotRow(){if(!S.sa.cotiz)S.sa.cotiz={rows:[]};if(!S.sa.cotiz.rows)S.sa.cotiz.rows=[];S.sa.cotiz.rows.push({partida:'',desc:'',cant:1,costo:0,nota:''});recompute();}
 
@@ -1209,6 +1270,15 @@ function renderBOMtable(tag){
   $(tag+'_marg').textContent=pct(Rt.marg);
 }
 function setBOMglobal(tag,field,pctVal){const St=tag==='mat'?S.mat:S.con;const v=num(pctVal)/100;St[field]=v;St.rows.forEach(r=>r[field]=v);recompute();}
+/* Conversión de moneda para calculadoras basadas en "costo" (Subcontratación y Servicio Administrado) */
+function convertCosto(St,selId,label){if(!St){return;}const tc=num(St.fx);if(tc<=0){alert('Ingresa un Tipo de cambio válido (> 0).');return;}
+  const from=St.moneda||'MXN', to=(from==='MXN'?'USD':'MXN');
+  (St.rows||[]).forEach(r=>{const c=num(r.costo);r.costo=(to==='USD')?(c/tc):(c*tc);});
+  St.moneda=to;const sel=$(selId);if(sel)sel.value=to;recompute();
+  alert((label||'Costo Unitario')+' convertido de '+from+' a '+to+' (Tipo de cambio '+tc.toFixed(2)+').');}
+function convertSubc(){convertCosto(S.ing.subc,'subc_moneda','Costo Unitario (Subcontratación)');}
+function convertSacalc(){convertCosto(S.sa.sacalc,'sacalc_moneda','Costo Unitario (Servicio Administrado)');}
+function addSacalc(){if(!S.sa.sacalc)S.sa.sacalc={moneda:'MXN',fx:20,rows:[]};S.sa.sacalc.rows.push({concepto:'',cant:1,costo:0,margin:0,nota:''});recompute();}
 function convertBOM(tag){const St=tag==='mat'?S.mat:S.con;const tc=num(St.fx);if(tc<=0){alert('Ingresa un Tipo de cambio válido (> 0).');return;}
   const from=St.moneda||'MXN', to=(from==='MXN'?'USD':'MXN');
   St.rows.forEach(r=>{const pl=num(r.pl);r.pl=(to==='USD')?(pl/tc):(pl*tc);});
@@ -1941,6 +2011,8 @@ function bindHeaderInputs(){
 }
 function syncFromInputs(){
   S.ing.moneda=$('ing_moneda').value;S.ing.fx=num($('ing_fx').value);S.ing.margin=num($('ing_margin').value)/100;
+  if(S.ing.subc){const _sm=$('subc_moneda');if(_sm)S.ing.subc.moneda=_sm.value;const _sf=$('subc_fx');if(_sf)S.ing.subc.fx=num(_sf.value);}
+  if(S.sa.sacalc){const _xm=$('sacalc_moneda');if(_xm)S.sa.sacalc.moneda=_xm.value;const _xf=$('sacalc_fx');if(_xf)S.sa.sacalc.fx=num(_xf.value);}
   S.sa.despliegue=$('sa_despliegue').value;S.sa.servicio=$('sa_servicio').value;S.sa.cobertura=$('sa_cobertura').value;
   S.sa.sla=$('sa_sla').value;S.sa.dur=$('sa_dur').value;S.sa.moneda=$('sa_moneda').value;S.sa.fx=num($('sa_fx').value);
   S.sa.tickets=num($('sa_tickets').value);S.sa.mant=$('sa_mant').value;S.sa.asist=$('sa_asist').value;S.sa.margin=num($('sa_margin').value)/100;
@@ -1961,6 +2033,8 @@ function pushToInputs(){
   $('sa_despliegue').value=S.sa.despliegue;$('sa_servicio').value=S.sa.servicio;$('sa_cobertura').value=S.sa.cobertura;
   $('sa_sla').value=S.sa.sla;$('sa_dur').value=S.sa.dur;$('sa_moneda').value=S.sa.moneda;$('sa_fx').value=num(S.sa.fx).toFixed(2);
   $('sa_tickets').value=S.sa.tickets;$('sa_mant').value=S.sa.mant;$('sa_asist').value=S.sa.asist;$('sa_margin').value=(num(S.sa.margin)*100).toFixed(2);
+  if(S.ing.subc&&$('subc_moneda')){$('subc_moneda').value=S.ing.subc.moneda||'MXN';$('subc_fx').value=num(S.ing.subc.fx||20).toFixed(2);}
+  if(S.sa.sacalc&&$('sacalc_moneda')){$('sacalc_moneda').value=S.sa.sacalc.moneda||'MXN';$('sacalc_fx').value=num(S.sa.sacalc.fx||20).toFixed(2);}
   $('mat_moneda').value=S.mat.moneda;
   $('con_moneda').value=S.con.moneda;
   $('mat_discG').value=(num(S.mat.disc)*100).toFixed(2);$('mat_marginG').value=(num(S.mat.margin)*100).toFixed(2);$('mat_fx').value=num(S.mat.fx||19);
@@ -2033,7 +2107,9 @@ async function downloadPDF(){
   try{await guardarRapido();}catch(e){console.error(e);}
   await exportPDFnative();
 }
-function applyLoaded(j){if(j.state){S=j.state;if(j.clients)DB_CLIENTS=j.clients;if(j.dirs){if(j.dirs.preventa)DIR.preventa=j.dirs.preventa;if(j.dirs.ejecutivos)DIR.ejecutivos=j.dirs.ejecutivos;}}else{S=j;}if(!Array.isArray(S.historial))S.historial=[];if(!S.proyecto.version)S.proyecto.version='v1';}
+function applyLoaded(j){if(j.state){S=j.state;if(j.clients)DB_CLIENTS=j.clients;if(j.dirs){if(j.dirs.preventa)DIR.preventa=j.dirs.preventa;if(j.dirs.ejecutivos)DIR.ejecutivos=j.dirs.ejecutivos;}}else{S=j;}if(!Array.isArray(S.historial))S.historial=[];if(!S.proyecto.version)S.proyecto.version='v1';
+  if(S.ing&&S.ing.subc&&!S.ing.subc.moneda){S.ing.subc.moneda='MXN';S.ing.subc.fx=S.ing.subc.fx||20;}
+  if(S.sa&&!S.sa.sacalc)S.sa.sacalc={moneda:'MXN',fx:20,rows:[{concepto:'',cant:1,costo:0,margin:0,nota:''}]};}
 async function abrirLocal(){if(window.showOpenFilePicker){try{const [h]=await window.showOpenFilePicker({types:[{description:'Proyecto Sipnology',accept:{'application/json':['.json']}}]});const file=await h.getFile();const j=JSON.parse(await file.text());applyLoaded(j);localFileHandle=h;openedFileName=h.name;hasFile=true;pushToInputs();recompute();updateSaveButtons();alert('Proyecto abierto: '+h.name);return;}catch(e){if(e&&e.name==='AbortError')return;}}$('fileInput').click();}
 function renderHistorial(){const b=$('hist_body');if(!b)return;const h=(S&&Array.isArray(S.historial))?S.historial:[];b.innerHTML=h.length?h.map((r,i)=>`<tr><td class="fitc" style="text-align:center">${esc(r.fecha||'')}</td><td class="fitc" style="text-align:center;color:#E8632A;font-weight:700">${esc(r.version||'')}</td><td class="fitc" style="text-align:center">${esc(r.hora||'')}</td><td class="l"><textarea class="ta" rows="1" data-hist="${i}" style="width:100%">${esc(r.resumen||'')}</textarea></td></tr>`).join(''):`<tr><td colspan="4" class="l" style="color:#999">Sin cambios registrados aún.</td></tr>`;
   b.querySelectorAll('[data-hist]').forEach(el=>{el.oninput=()=>{S.historial[+el.dataset.hist].resumen=el.value;autoGrow(el);};});}
