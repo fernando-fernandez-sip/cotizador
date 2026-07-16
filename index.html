@@ -1434,7 +1434,8 @@ async function exportPDFnative(){
     doc.autoTable({startY:yy+2,head:[head],
       body:body.length?body:[[{content:'Sin partidas',colSpan:head.length,styles:{halign:'left',textColor:150}}]],
       foot:[[{content:tlabel,colSpan:head.length-1,styles:{halign:'right',fontStyle:'bold'}},n2(total)]],
-      theme:'grid',headStyles:{fillColor:BR,textColor:255,fontStyle:'bold',halign:'center',fontSize:7.5},
+      theme:'grid',showFoot:'lastPage',showHead:'everyPage',
+      headStyles:{fillColor:BR,textColor:255,fontStyle:'bold',halign:'center',fontSize:7.5},
       footStyles:{fillColor:TOT,textColor:20,fontStyle:'bold',fontSize:8,halign:'right'},
       bodyStyles:{fontSize:7.5,textColor:34,valign:'top',lineColor:LN,lineWidth:0.2},
       columnStyles:cols,margin:{left:M,right:M}});
@@ -1451,7 +1452,7 @@ async function exportPDFnative(){
   const sub=R.prop.priceTotal+R.sacot.priceTotal+R.mat.price+R.con.price, iva=sub*0.16, tot=sub+iva;
   if(yy>ph-34){doc.addPage();yy=M;}
   doc.autoTable({startY:yy,theme:'grid',
-    body:[['Subtotal',n2(sub)],['Impuesto (16%)',n2(iva)],[{content:'TOTAL',styles:{fontStyle:'bold',fillColor:TOT}},{content:n2(tot),styles:{fontStyle:'bold',fillColor:TOT}}]],
+    body:[['Subtotal',n2(sub)],['Impuesto (16%)',n2(iva)],[{content:'TOTAL ('+cur+')',styles:{fontStyle:'bold',fillColor:TOT}},{content:n2(tot),styles:{fontStyle:'bold',fillColor:TOT}}]],
     styles:{fontSize:9,lineColor:LN,lineWidth:0.2},columnStyles:{0:{halign:'right',cellWidth:38},1:{halign:'right',cellWidth:34}},
     margin:{left:pw-M-72,right:M}});
   yy=doc.lastAutoTable.finalY+5;
