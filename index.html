@@ -165,7 +165,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
         <div><label class="f">ID de Oportunidad (CRM)</label><input id="p_crm"></div>
         <div><label class="f">Ingeniero de Preventa</label><div class="row" style="gap:4px;flex-wrap:nowrap"><select id="p_preventa" onchange="onPreventaChange()" style="flex:1;min-width:0"></select><button class="mini del" onclick="deletePreventa()" title="Eliminar preventa">🗑</button></div></div>
         <div><label class="f">Ejecutivo de Cuenta</label><div class="row" style="gap:4px;flex-wrap:nowrap"><select id="p_ejecutivo" onchange="onEjecutivoChange()" style="flex:1;min-width:0"></select><button class="mini del" onclick="deleteEjecutivo()" title="Eliminar ejecutivo">🗑</button></div></div>
-        <div><label class="f">Fecha de aplicación</label><input id="p_fecha" type="date"></div>
+        <div><label class="f">Fecha de aplicación</label><div style="position:relative"><input id="p_fecha" type="date" style="width:100%"><span id="p_fecha_ph" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--mut);pointer-events:none;font-size:12px;background:#0c1730;padding-right:8px;display:none">Selecciona Fecha</span></div></div>
         <div><label class="f">Versión</label><input id="p_version" value="v1" readonly tabindex="-1" title="La versión se asigna automáticamente (Guardar / Guardar Cambios)" style="width:80px;text-align:center;background:#0c1730;color:#E8632A;font-weight:700;pointer-events:none;cursor:default"></div>
       </div>
       <div id="p_clientbox" style="margin-top:10px"></div>
@@ -316,6 +316,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
         <thead><tr><th class="l" style="text-align:center">Descripción</th><th>Cant.</th><th>Costo unit.</th><th>Carga social</th><th>Subtotal unit.</th><th>Costo total</th><th>Margen</th><th>Precio total</th><th></th></tr></thead>
         <tbody id="onsite_body"></tbody>
       </table>
+      <div style="margin-top:8px"><button class="mini add" onclick="addOnsite()">＋ Agregar recurso</button></div>
       <div class="kpis" style="margin-top:12px;grid-template-columns:repeat(6,1fr)">
         <div class="kpi"><div class="lab">Cantidad de recursos</div><div class="val" id="onsite_qty">–</div></div>
         <div class="kpi cost"><div class="lab">Costo Unit.</div><div class="val" id="onsite_cunit">–</div></div>
@@ -635,7 +636,20 @@ const SUBC_ROWS=[88,89,90,91,92];
 const TRIP_ROWS=[101,104,105,106,107,108,111,112,115,118,119];
 
 /* ============================ STATE ============================ */
-let S = defaultState();
+let S = blankState();
+/* Proyecto en blanco (sin datos de muestra ni filas): usado al iniciar y en "Nuevo" */
+function blankState(){
+  const st=defaultState();
+  st.proyecto={pais:'México',oficina:'Sipnology GDL',empresa:'',contacto:'',oportunidad:'',crm:'',preventa:'',ejecutivo:'',fecha:'',version:'v1'};
+  st.tecnico={sector:'-',tipoimpl:'-',soporte:'-',despliegue:'-',sitios:0,dur:'',marcas:'',notas:''};
+  st.ing.tasks=[];st.ing.subc.rows=[];st.ing.prop.rows=[];st.ing.trips=[];
+  st.sa.onsite=[];st.sa.cotiz.rows=[];st.sa.sacalc.rows=[];
+  ['basic','adv','end'].forEach(k=>{Object.keys(st.sa.dev[k]).forEach(r=>{st.sa.dev[k][r]=0;});});
+  st.mat.rows=[];st.con.rows=[];
+  st.comercial={notas:'',condiciones:DEFAULT_CONDICIONES,comisiones:[]};
+  st.historial=[];
+  return st;
+}
 function defaultState(){
   const st = {
     proyecto:{pais:'México',oficina:'Sipnology GDL',empresa:'',contacto:'',oportunidad:'',crm:'',preventa:'Fernando Fernández',ejecutivo:'Samuel Huerta',fecha:new Date().toISOString().slice(0,10),version:'v1'},
@@ -1177,7 +1191,7 @@ function renderSA(){
     else if(k==='margin_pct'){S.sa.onsite[i].margin=num(el.value)/100;recompute();}
     else{S.sa.onsite[i][k]=num(el.value);recompute();}
   };});
-  document.querySelectorAll('[data-delon]').forEach(el=>{el.onclick=()=>{if(S.sa.onsite.length>1)S.sa.onsite.splice(+el.dataset.delon,1);else alert('Debe quedar al menos un recurso.');recompute();};});
+  document.querySelectorAll('[data-delon]').forEach(el=>{el.onclick=()=>{S.sa.onsite.splice(+el.dataset.delon,1);recompute();};});
   document.querySelectorAll('#onsite_body input.numw').forEach(el=>{sizeMoney(el);el.onfocus=()=>{const v=num(el.value);el.value=(v===0?'':String(v));sizeMoney(el);};el.onblur=()=>{el.value=n2(num(el.value));sizeMoney(el);};});
 
   // Cotización de Soporte / Servicios Administrados (tabla estilo Propuesta Ingeniería)
@@ -1279,6 +1293,7 @@ function convertCosto(St,selId,label){if(!St){return;}const tc=num(St.fx);if(tc<
 function convertSubc(){convertCosto(S.ing.subc,'subc_moneda','Costo Unitario (Subcontratación)');}
 function convertSacalc(){convertCosto(S.sa.sacalc,'sacalc_moneda','Costo Unitario (Servicio Administrado)');}
 function addSacalc(){if(!S.sa.sacalc)S.sa.sacalc={moneda:'MXN',fx:20,rows:[]};S.sa.sacalc.rows.push({concepto:'',cant:1,costo:0,margin:0,nota:''});recompute();}
+function addOnsite(){if(!Array.isArray(S.sa.onsite))S.sa.onsite=[];S.sa.onsite.push({r:0,d:'Recurso '+(S.sa.onsite.length+1),cant:0,costo:0,carga:0.42,margin:0.4,meses:12});recompute();}
 function convertBOM(tag){const St=tag==='mat'?S.mat:S.con;const tc=num(St.fx);if(tc<=0){alert('Ingresa un Tipo de cambio válido (> 0).');return;}
   const from=St.moneda||'MXN', to=(from==='MXN'?'USD':'MXN');
   St.rows.forEach(r=>{const pl=num(r.pl);r.pl=(to==='USD')?(pl/tc):(pl*tc);});
@@ -1844,11 +1859,11 @@ function updateEjecutivoInfo(){
   box.innerHTML=p?dataBox('EJECUTIVO DE CUENTA',[['Nombre',p.nombre],['E-mail',p.email],['Teléfono',p.telefono]],"openPersonModal('am','edit')"):'';
 }
 function refreshPreventaSelect(){
-  $('p_preventa').innerHTML=DIR.preventa.map(x=>`<option ${x.nombre===S.proyecto.preventa?'selected':''}>${esc(x.nombre)}</option>`).join('')+`<option value="__newpv__">➕ Agregar preventa…</option>`;
+  $('p_preventa').innerHTML=`<option value="" ${!S.proyecto.preventa?'selected':''}>Selecciona Ingeniero de preventa</option>`+DIR.preventa.map(x=>`<option ${x.nombre===S.proyecto.preventa?'selected':''}>${esc(x.nombre)}</option>`).join('')+`<option value="__newpv__">➕ Agregar preventa…</option>`;
   updatePreventaInfo();
 }
 function refreshEjecutivoSelect(){
-  $('p_ejecutivo').innerHTML=DIR.ejecutivos.map(x=>`<option ${x.nombre===S.proyecto.ejecutivo?'selected':''}>${esc(x.nombre)}</option>`).join('')+`<option value="__newam__">➕ Agregar ejecutivo…</option>`;
+  $('p_ejecutivo').innerHTML=`<option value="" ${!S.proyecto.ejecutivo?'selected':''}>Selecciona Ejecutivo de cuenta</option>`+DIR.ejecutivos.map(x=>`<option ${x.nombre===S.proyecto.ejecutivo?'selected':''}>${esc(x.nombre)}</option>`).join('')+`<option value="__newam__">➕ Agregar ejecutivo…</option>`;
   updateEjecutivoInfo();
 }
 function onPreventaChange(){const v=$('p_preventa').value;if(v==='__newpv__'){$('p_preventa').value=S.proyecto.preventa;openPersonModal('pv','new');return;}S.proyecto.preventa=v;updatePreventaInfo();renderQuote();}
@@ -2000,12 +2015,13 @@ function fillDirectories(){
   $('p_oficina').innerHTML=DIR.oficinas.map(o=>`<option>${o.name}</option>`).join('');
   refreshClienteSelect();refreshContactoSelect();refreshPreventaSelect();refreshEjecutivoSelect();
 }
+function updateFechaPH(){const el=$('p_fecha'),ph=$('p_fecha_ph');if(!el||!ph)return;ph.style.display=el.value?'none':'block';}
 function bindHeaderInputs(){
   const map={p_pais:['proyecto','pais'],p_oficina:['proyecto','oficina'],p_oportunidad:['proyecto','oportunidad'],p_crm:['proyecto','crm'],
     p_fecha:['proyecto','fecha'],
     t_sector:['tecnico','sector'],t_tipoimpl:['tecnico','tipoimpl'],t_soporte:['tecnico','soporte'],t_despliegue:['tecnico','despliegue'],
     t_sitios:['tecnico','sitios'],t_dur:['tecnico','dur'],t_marcas:['tecnico','marcas'],t_notas:['tecnico','notas']};
-  for(const id in map){const el=$(id);if(!el)continue;el.oninput=el.onchange=()=>{if(id==='t_dur'){el.value=el.value.replace(/[^0-9]/g,'');}S[map[id][0]][map[id][1]]=el.value;if(id==='p_oficina'){const o=DIR.oficinas.find(x=>x.name===el.value);$('p_ciudad').value=o?o.city:'';}if(el.classList.contains('ta'))autoGrow(el);renderQuote();};}
+  for(const id in map){const el=$(id);if(!el)continue;el.oninput=el.onchange=()=>{if(id==='t_dur'){el.value=el.value.replace(/[^0-9]/g,'');}S[map[id][0]][map[id][1]]=el.value;if(id==='p_oficina'){const o=DIR.oficinas.find(x=>x.name===el.value);$('p_ciudad').value=o?o.city:'';}if(id==='p_fecha')updateFechaPH();if(el.classList.contains('ta'))autoGrow(el);renderQuote();};}
   $('c_notas').oninput=()=>{if(!S.comercial)S.comercial={notas:'',condiciones:''};S.comercial.notas=$('c_notas').value;autoGrow($('c_notas'));renderQuote();};
   $('c_cond').oninput=()=>{if(!S.comercial)S.comercial={notas:'',condiciones:''};S.comercial.condiciones=$('c_cond').value;autoGrow($('c_cond'));renderQuote();};
 }
@@ -2024,7 +2040,7 @@ function pushToInputs(){
   const p=S.proyecto,t=S.tecnico;
   $('p_pais').value=p.pais;$('p_oficina').value=p.oficina;
   $('p_oportunidad').value=p.oportunidad;$('p_crm').value=p.crm;
-  $('p_fecha').value=p.fecha;setVersion(p.version||'v1');renderHistorial();updateSaveButtons();
+  $('p_fecha').value=p.fecha;updateFechaPH();setVersion(p.version||'v1');renderHistorial();updateSaveButtons();
   const o=DIR.oficinas.find(x=>x.name===p.oficina);$('p_ciudad').value=o?o.city:'';
   refreshClienteSelect();refreshContactoSelect();refreshPreventaSelect();refreshEjecutivoSelect();
   $('t_sector').value=t.sector;$('t_tipoimpl').value=t.tipoimpl;$('t_soporte').value=t.soporte;$('t_despliegue').value=t.despliegue;
@@ -2280,14 +2296,14 @@ function loadProject(ev){
   rd.onload=()=>{try{const j=JSON.parse(rd.result);applyLoaded(j);localFileHandle=null;openedFileName=f.name;hasFile=true;pushToInputs();recompute();updateSaveButtons();alert('Proyecto abierto: '+f.name);}catch(e){alert('Archivo inválido');}};
   rd.readAsText(f);
 }
-function newProject(){if(confirm('¿Empezar un proyecto nuevo? Se perderán los datos no guardados.')){S=defaultState();localFileHandle=null;openedFileName=null;hasFile=false;pushToInputs();recompute();updateSaveButtons();}}
+function newProject(){if(confirm('¿Empezar un proyecto nuevo en blanco? Se perderán los datos no guardados.')){S=blankState();localFileHandle=null;openedFileName=null;hasFile=false;pushToInputs();recompute();updateSaveButtons();showView('proyecto');}}
 
 /* ===== Persistencia: guardar datos capturados como base ===== */
 const BASE_KEY='sip_costeo_base';
 function deepMerge(base,ov){if(ov===null||ov===undefined)return base;if(Array.isArray(ov))return ov;if(typeof ov==='object'){const out=(base&&typeof base==='object'&&!Array.isArray(base))?Object.assign({},base):{};for(const k in ov){out[k]=deepMerge(out[k],ov[k]);}return out;}return ov;}
-function loadBase(){try{const raw=localStorage.getItem(BASE_KEY);if(!raw)return false;const sv=JSON.parse(raw);S=deepMerge(defaultState(),sv);return true;}catch(e){return false;}}
+function loadBase(){try{const raw=localStorage.getItem(BASE_KEY);if(!raw)return false;const sv=JSON.parse(raw);S=deepMerge(blankState(),sv);return true;}catch(e){return false;}}
 function saveBase(){try{syncFromInputs();localStorage.setItem(BASE_KEY,JSON.stringify(S));alert('✅ Datos guardados como base. Se cargarán automáticamente cada vez que abras el aplicativo (en este navegador).');}catch(e){alert('No se pudieron guardar los datos: '+e.message);}}
-function resetBase(){if(confirm('¿Restablecer a los datos de fábrica? Se borrará la base guardada.')){try{localStorage.removeItem(BASE_KEY);}catch(e){}S=defaultState();pushToInputs();recompute();alert('Datos restablecidos a los valores de fábrica.');}}
+function resetBase(){if(confirm('¿Restablecer a un proyecto en blanco? Se borrará la base guardada.')){try{localStorage.removeItem(BASE_KEY);}catch(e){}S=blankState();localFileHandle=null;openedFileName=null;hasFile=false;pushToInputs();recompute();updateSaveButtons();alert('Proyecto restablecido en blanco.');}}
 
 /* ===== Calculadora flotante (arrastrable, operaciones básicas) ===== */
 let fcExpr='';
