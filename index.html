@@ -157,7 +157,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
       <div class="hint">Encabezado que alimenta la portada de la cotización y el resumen.</div>
       <div class="grid g3">
         <div><label class="f">País</label><select id="p_pais"></select></div>
-        <div><label class="f">Oficina / Filial (desde la que se vende)</label><select id="p_oficina"></select></div>
+        <div><label class="f">Oficina / Filial (desde la que se vende)</label><div class="row" style="gap:4px;flex-wrap:nowrap"><select id="p_oficina" onchange="onOficinaChange()" style="flex:1;min-width:0"></select><button class="mini" onclick="openOficinaModal('edit')" title="Editar oficina">✏️</button><button class="mini del" onclick="deleteOficina()" title="Eliminar oficina">🗑</button></div></div>
         <div><label class="f">Ciudad (auto)</label><input id="p_ciudad" readonly></div>
         <div><label class="f">Cliente</label><div class="row" style="gap:4px;flex-wrap:nowrap"><select id="p_empresa" onchange="onClienteChange()" style="flex:1;min-width:0"></select><button class="mini del" onclick="deleteCliente()" title="Eliminar cliente">🗑</button></div></div>
         <div><label class="f">Contacto</label><div class="row" style="gap:4px;flex-wrap:nowrap"><select id="p_contacto" onchange="onContactoChange()" style="flex:1;min-width:0"></select><button class="mini del" onclick="deleteContacto()" title="Eliminar contacto">🗑</button></div></div>
@@ -165,7 +165,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
         <div><label class="f">ID de Oportunidad (CRM)</label><input id="p_crm"></div>
         <div><label class="f">Ingeniero de Preventa</label><div class="row" style="gap:4px;flex-wrap:nowrap"><select id="p_preventa" onchange="onPreventaChange()" style="flex:1;min-width:0"></select><button class="mini del" onclick="deletePreventa()" title="Eliminar preventa">🗑</button></div></div>
         <div><label class="f">Ejecutivo de Cuenta</label><div class="row" style="gap:4px;flex-wrap:nowrap"><select id="p_ejecutivo" onchange="onEjecutivoChange()" style="flex:1;min-width:0"></select><button class="mini del" onclick="deleteEjecutivo()" title="Eliminar ejecutivo">🗑</button></div></div>
-        <div><label class="f">Fecha de aplicación</label><div style="position:relative"><input id="p_fecha" type="date" style="width:100%"><span id="p_fecha_ph" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--mut);pointer-events:none;font-size:12px;background:#0c1730;padding-right:8px;display:none">Selecciona Fecha</span></div></div>
+        <div><label class="f">Fecha de aplicación</label><div style="position:relative"><input id="p_fecha" type="date" style="width:100%"><span id="p_fecha_ph" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--mut);pointer-events:none;font-size:12px;background:#0c1730;padding-right:8px;display:none">— Selecciona Fecha —</span></div></div>
         <div><label class="f">Versión</label><input id="p_version" value="v1" readonly tabindex="-1" title="La versión se asigna automáticamente (Guardar / Guardar Cambios)" style="width:80px;text-align:center;background:#0c1730;color:#E8632A;font-weight:700;pointer-events:none;cursor:default"></div>
       </div>
       <div id="p_clientbox" style="margin-top:10px"></div>
@@ -640,7 +640,7 @@ let S = blankState();
 /* Proyecto en blanco (sin datos de muestra ni filas): usado al iniciar y en "Nuevo" */
 function blankState(){
   const st=defaultState();
-  st.proyecto={pais:'México',oficina:'Sipnology GDL',empresa:'',contacto:'',oportunidad:'',crm:'',preventa:'',ejecutivo:'',fecha:'',version:'v1'};
+  st.proyecto={pais:'México',oficina:'',empresa:'',contacto:'',oportunidad:'',crm:'',preventa:'',ejecutivo:'',fecha:'',version:'v1'};
   st.tecnico={sector:'-',tipoimpl:'-',soporte:'-',despliegue:'-',sitios:0,dur:'',marcas:'',notas:''};
   st.ing.tasks=[];st.ing.subc.rows=[];st.ing.prop.rows=[];st.ing.trips=[];
   st.sa.onsite=[];st.sa.cotiz.rows=[];st.sa.sacalc.rows=[];
@@ -1859,12 +1859,52 @@ function updateEjecutivoInfo(){
   box.innerHTML=p?dataBox('EJECUTIVO DE CUENTA',[['Nombre',p.nombre],['E-mail',p.email],['Teléfono',p.telefono]],"openPersonModal('am','edit')"):'';
 }
 function refreshPreventaSelect(){
-  $('p_preventa').innerHTML=`<option value="" ${!S.proyecto.preventa?'selected':''}>Selecciona Ingeniero de preventa</option>`+DIR.preventa.map(x=>`<option ${x.nombre===S.proyecto.preventa?'selected':''}>${esc(x.nombre)}</option>`).join('')+`<option value="__newpv__">➕ Agregar preventa…</option>`;
+  $('p_preventa').innerHTML=`<option value="" ${!S.proyecto.preventa?'selected':''}>— Selecciona Ingeniero de Preventa —</option>`+DIR.preventa.map(x=>`<option ${x.nombre===S.proyecto.preventa?'selected':''}>${esc(x.nombre)}</option>`).join('')+`<option value="__newpv__">➕ Agregar preventa…</option>`;
   updatePreventaInfo();
 }
 function refreshEjecutivoSelect(){
-  $('p_ejecutivo').innerHTML=`<option value="" ${!S.proyecto.ejecutivo?'selected':''}>Selecciona Ejecutivo de cuenta</option>`+DIR.ejecutivos.map(x=>`<option ${x.nombre===S.proyecto.ejecutivo?'selected':''}>${esc(x.nombre)}</option>`).join('')+`<option value="__newam__">➕ Agregar ejecutivo…</option>`;
+  $('p_ejecutivo').innerHTML=`<option value="" ${!S.proyecto.ejecutivo?'selected':''}>— Selecciona Ejecutivo de Cuenta —</option>`+DIR.ejecutivos.map(x=>`<option ${x.nombre===S.proyecto.ejecutivo?'selected':''}>${esc(x.nombre)}</option>`).join('')+`<option value="__newam__">➕ Agregar ejecutivo…</option>`;
   updateEjecutivoInfo();
+}
+function refreshOficinaSelect(){
+  $('p_oficina').innerHTML=`<option value="" ${!S.proyecto.oficina?'selected':''}>— Selecciona Oficina —</option>`+DIR.oficinas.map(o=>`<option ${o.name===S.proyecto.oficina?'selected':''}>${esc(o.name)}</option>`).join('')+`<option value="__newof__">➕ Agregar oficina…</option>`;
+}
+function onOficinaChange(){
+  const v=$('p_oficina').value;
+  if(v==='__newof__'){$('p_oficina').value=S.proyecto.oficina;openOficinaModal('new');return;}
+  S.proyecto.oficina=v;
+  const o=DIR.oficinas.find(x=>x.name===v);$('p_ciudad').value=o?o.city:'';
+  renderQuote();
+}
+function openOficinaModal(mode){
+  mode=mode||'new';let cur={name:'',city:''};
+  if(mode==='edit'){const f=DIR.oficinas.find(x=>x.name===S.proyecto.oficina);if(!f){alert('Selecciona una oficina para editar.');return;}cur=f;}
+  $('modal').innerHTML=`<h3>${mode==='edit'?'Editar':'Agregar'} Oficina / Filial</h3>
+    <div class="grid g2">
+      <div style="grid-column:1/-1"><label class="f">Nombre de la oficina *</label><input id="of_name" value="${esc(cur.name)}"></div>
+      <div style="grid-column:1/-1"><label class="f">Ciudad *</label><input id="of_city" value="${esc(cur.city)}"></div>
+    </div>
+    <div class="row" style="margin-top:14px"><button class="btn" onclick="saveOficina('${mode}')">Guardar</button><button class="btn sec" onclick="closeModal()">Cancelar</button></div>`;
+  $('overlay').classList.add('on');setTimeout(()=>{const el=$('of_name');if(el)el.focus();},50);
+}
+function saveOficina(mode){
+  const name=$('of_name').value.trim();if(!name){alert('El nombre de la oficina es obligatorio.');return;}
+  const city=$('of_city').value.trim();
+  if(mode==='edit'){
+    const orig=S.proyecto.oficina;const rec=DIR.oficinas.find(x=>x.name===orig);if(!rec){alert('Oficina no encontrada.');return;}
+    if(name!==orig&&DIR.oficinas.some(x=>x.name===name)){alert('Ya existe otra oficina con ese nombre.');return;}
+    rec.name=name;rec.city=city;S.proyecto.oficina=name;
+  }else{
+    if(DIR.oficinas.some(x=>x.name===name)){alert('Ya existe esa oficina.');return;}
+    DIR.oficinas.push({name,city});S.proyecto.oficina=name;
+  }
+  closeModal();refreshOficinaSelect();$('p_ciudad').value=city;renderQuote();
+}
+function deleteOficina(){
+  const o=DIR.oficinas.find(x=>x.name===S.proyecto.oficina);if(!o){alert('Selecciona una oficina para eliminar.');return;}
+  if(!confirm(`¿Eliminar la oficina "${o.name}"?`))return;
+  DIR.oficinas=DIR.oficinas.filter(x=>x!==o);S.proyecto.oficina='';
+  refreshOficinaSelect();$('p_ciudad').value='';renderQuote();
 }
 function onPreventaChange(){const v=$('p_preventa').value;if(v==='__newpv__'){$('p_preventa').value=S.proyecto.preventa;openPersonModal('pv','new');return;}S.proyecto.preventa=v;updatePreventaInfo();renderQuote();}
 function onEjecutivoChange(){const v=$('p_ejecutivo').value;if(v==='__newam__'){$('p_ejecutivo').value=S.proyecto.ejecutivo;openPersonModal('am','new');return;}S.proyecto.ejecutivo=v;updateEjecutivoInfo();renderQuote();}
@@ -2012,12 +2052,12 @@ function saveContact(){
 /* ============================ INPUT SYNC ============================ */
 function fillDirectories(){
   $('p_pais').innerHTML=DIR.paises.map(x=>`<option>${x}</option>`).join('');
-  $('p_oficina').innerHTML=DIR.oficinas.map(o=>`<option>${o.name}</option>`).join('');
+  refreshOficinaSelect();
   refreshClienteSelect();refreshContactoSelect();refreshPreventaSelect();refreshEjecutivoSelect();
 }
 function updateFechaPH(){const el=$('p_fecha'),ph=$('p_fecha_ph');if(!el||!ph)return;ph.style.display=el.value?'none':'block';}
 function bindHeaderInputs(){
-  const map={p_pais:['proyecto','pais'],p_oficina:['proyecto','oficina'],p_oportunidad:['proyecto','oportunidad'],p_crm:['proyecto','crm'],
+  const map={p_pais:['proyecto','pais'],p_oportunidad:['proyecto','oportunidad'],p_crm:['proyecto','crm'],
     p_fecha:['proyecto','fecha'],
     t_sector:['tecnico','sector'],t_tipoimpl:['tecnico','tipoimpl'],t_soporte:['tecnico','soporte'],t_despliegue:['tecnico','despliegue'],
     t_sitios:['tecnico','sitios'],t_dur:['tecnico','dur'],t_marcas:['tecnico','marcas'],t_notas:['tecnico','notas']};
@@ -2038,11 +2078,11 @@ function syncFromInputs(){
 }
 function pushToInputs(){
   const p=S.proyecto,t=S.tecnico;
-  $('p_pais').value=p.pais;$('p_oficina').value=p.oficina;
+  $('p_pais').value=p.pais;
   $('p_oportunidad').value=p.oportunidad;$('p_crm').value=p.crm;
   $('p_fecha').value=p.fecha;updateFechaPH();setVersion(p.version||'v1');renderHistorial();updateSaveButtons();
   const o=DIR.oficinas.find(x=>x.name===p.oficina);$('p_ciudad').value=o?o.city:'';
-  refreshClienteSelect();refreshContactoSelect();refreshPreventaSelect();refreshEjecutivoSelect();
+  refreshOficinaSelect();refreshClienteSelect();refreshContactoSelect();refreshPreventaSelect();refreshEjecutivoSelect();
   $('t_sector').value=t.sector;$('t_tipoimpl').value=t.tipoimpl;$('t_soporte').value=t.soporte;$('t_despliegue').value=t.despliegue;
   $('t_sitios').value=t.sitios;$('t_dur').value=(t.dur&&t.dur!=='-')?t.dur:'';$('t_marcas').value=t.marcas;$('t_notas').value=t.notas;
   $('ing_moneda').value=S.ing.moneda;$('ing_fx').value=num(S.ing.fx).toFixed(2);$('ing_margin').value=(num(S.ing.margin)*100).toFixed(2);
@@ -2087,7 +2127,7 @@ function costeoBaseName(){
 }
 /* ===== Guardado y versionado (Guardar / Guardar Cambios) ===== */
 let localFileHandle=null, openedFileName=null, hasFile=false;
-function projectPayload(){return {state:S,clients:DB_CLIENTS,dirs:{preventa:DIR.preventa,ejecutivos:DIR.ejecutivos}};}
+function projectPayload(){return {state:S,clients:DB_CLIENTS,dirs:{preventa:DIR.preventa,ejecutivos:DIR.ejecutivos,oficinas:DIR.oficinas}};}
 function dlLocal(json,fname){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));a.download=fname;a.click();}
 function bumpVersion(ver,major){const m=/^v?(\d+)(?:\.(\d+))?$/i.exec(String(ver||'v1'));let M=m?+m[1]:1,N=(m&&m[2]!=null)?+m[2]:0;if(major){M+=1;N=0;}else{N+=1;}return 'v'+M+(N>0?('.'+N):'');}
 function setVersion(v){if(!S.proyecto)S.proyecto={};S.proyecto.version=v;const el=$('p_version');if(el)el.value=v;const lbl=$('p_verlbl');if(lbl)lbl.textContent='('+v+')';}
@@ -2123,7 +2163,7 @@ async function downloadPDF(){
   try{await guardarRapido();}catch(e){console.error(e);}
   await exportPDFnative();
 }
-function applyLoaded(j){if(j.state){S=j.state;if(j.clients)DB_CLIENTS=j.clients;if(j.dirs){if(j.dirs.preventa)DIR.preventa=j.dirs.preventa;if(j.dirs.ejecutivos)DIR.ejecutivos=j.dirs.ejecutivos;}}else{S=j;}if(!Array.isArray(S.historial))S.historial=[];if(!S.proyecto.version)S.proyecto.version='v1';
+function applyLoaded(j){if(j.state){S=j.state;if(j.clients)DB_CLIENTS=j.clients;if(j.dirs){if(j.dirs.preventa)DIR.preventa=j.dirs.preventa;if(j.dirs.ejecutivos)DIR.ejecutivos=j.dirs.ejecutivos;if(j.dirs.oficinas)DIR.oficinas=j.dirs.oficinas;}}else{S=j;}if(!Array.isArray(S.historial))S.historial=[];if(!S.proyecto.version)S.proyecto.version='v1';
   if(S.ing&&S.ing.subc&&!S.ing.subc.moneda){S.ing.subc.moneda='MXN';S.ing.subc.fx=S.ing.subc.fx||20;}
   if(S.sa&&!S.sa.sacalc)S.sa.sacalc={moneda:'MXN',fx:20,rows:[{concepto:'',cant:1,costo:0,margin:0,nota:''}]};}
 async function abrirLocal(){if(window.showOpenFilePicker){try{const [h]=await window.showOpenFilePicker({types:[{description:'Proyecto Sipnology',accept:{'application/json':['.json']}}]});const file=await h.getFile();const j=JSON.parse(await file.text());applyLoaded(j);localFileHandle=h;openedFileName=h.name;hasFile=true;pushToInputs();recompute();updateSaveButtons();alert('Proyecto abierto: '+h.name);return;}catch(e){if(e&&e.name==='AbortError')return;}}$('fileInput').click();}
@@ -2174,7 +2214,7 @@ async function repoSave(){
     const drv=await (await fetch(`https://graph.microsoft.com/v1.0/sites/${site.id}/drives`,{headers:H})).json();
     const drive=(drv.value||[]).find(d=>d.name===cfg.library)||(drv.value||[])[0];
     if(!drive)throw new Error('No se encontró la biblioteca "'+cfg.library+'".');
-    const payload={state:S,clients:DB_CLIENTS,dirs:{preventa:DIR.preventa,ejecutivos:DIR.ejecutivos}};
+    const payload={state:S,clients:DB_CLIENTS,dirs:{preventa:DIR.preventa,ejecutivos:DIR.ejecutivos,oficinas:DIR.oficinas}};
     const fname=costeoBaseName()+'.json';
     const up=await fetch(`https://graph.microsoft.com/v1.0/drives/${drive.id}/root:/${encodeURIComponent(fname)}:/content`,{method:'PUT',headers:Object.assign({},H,{'Content-Type':'application/json'}),body:JSON.stringify(payload,null,2)});
     if(!up.ok)throw new Error('Error al subir el archivo (HTTP '+up.status+').');
