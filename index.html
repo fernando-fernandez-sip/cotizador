@@ -1324,11 +1324,10 @@ function renderQuote(){
     <table style="margin-top:16px;width:46%;margin-left:auto">
       <tr><td class="l">Subtotal</td><td class="nw">${n2(subtotal)}</td></tr>
       <tr><td class="l">Impuesto (16%)</td><td class="nw">${n2(iva)}</td></tr>
-      <tr class="tot"><td class="l">TOTAL</td><td class="nw">${n2(total)}</td></tr></table>
+      <tr class="tot"><td class="l">TOTAL (${S.ing.moneda})</td><td class="nw">${n2(total)}</td></tr></table>
     ${co.notas?`<h3>Notas</h3><div class="cond">${esc(co.notas)}</div>`:''}
     <h3>Condiciones comerciales</h3>
     <div class="cond">${esc(co.condiciones||'')}</div>
-    <p style="font-size:10px;color:#888;margin-top:16px">Cotización expresada en ${cur==='USD'?'Dólares Americanos (USD)':'Pesos Mexicanos (MXN)'}.</p>
     <table style="margin-top:26px" class="sign"><tr>
       <td style="width:50%">_____________________________<br><b>Sipnology</b></td>
       <td>_____________________________<br><b>CLIENTE</b></td>
@@ -1459,7 +1458,7 @@ async function exportPDFnative(){
   const co=S.comercial||{};
   const addTxt=(title,txt)=>{if(!txt)return;if(yy>ph-24){doc.addPage();yy=M;}doc.setFontSize(11);doc.setTextColor(BR[0],BR[1],BR[2]);doc.setFont(undefined,'bold');doc.text(title,M,yy);yy+=5;doc.setFontSize(8.5);doc.setTextColor(51);doc.setFont(undefined,'normal');doc.splitTextToSize(txt,cw).forEach(ln=>{if(yy>ph-14){doc.addPage();yy=M;}doc.text(ln,M,yy);yy+=4;});yy+=3;};
   if(co.notas)addTxt('Notas',co.notas);
-  addTxt('Condiciones comerciales',(cur==='USD'?'Cotización expresada en Dólares Americanos (USD).\n\n':'Cotización expresada en Pesos Mexicanos (MXN).\n\n')+(co.condiciones||''));
+  addTxt('Condiciones comerciales',(co.condiciones||''));
   if(yy>ph-28){doc.addPage();yy=M;}yy+=12;
   doc.setDrawColor(120);doc.setLineWidth(0.3);doc.line(M+8,yy,M+68,yy);doc.line(pw-M-68,yy,pw-M-8,yy);yy+=5;
   doc.setFontSize(9);doc.setTextColor(60);doc.setFont(undefined,'bold');doc.text('Sipnology',M+38,yy,{align:'center'});doc.text('CLIENTE',pw-M-38,yy,{align:'center'});
