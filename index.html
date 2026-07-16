@@ -144,7 +144,6 @@ tr.subtot td{background:#0c2033;font-weight:700}
     <button class="btn sec vbtn" onclick="repoOpen()"><span class="bic">☁️</span><span>Abrir del repositorio</span></button>
     <button id="btnGuardar" class="btn sec vbtn" onclick="guardar()"><span class="bic">💾</span><span>Guardar</span></button>
     <button id="btnGuardarCambios" class="btn sec vbtn" onclick="guardarCambios()"><span class="bic">📝</span><span>Guardar Cambios</span></button>
-    <button class="btn sec vbtn" onclick="repoConfig()" title="Configurar repositorio M365"><span class="bic">⚙️</span><span>Config</span></button>
     <button type="button" class="btn vbtn" onclick="toggleCalc()"><span class="bic">🧮</span><span>Calculadora</span></button>
     <button class="btn gr vbtn" onclick="exportExcel()"><span class="bic">⬇️</span><span>Descargar Excel</span></button>
     <button class="btn vbtn" onclick="saveBase()"><span class="bic">💾</span><span>Guardar como base</span></button>
@@ -452,7 +451,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
   <section class="view" data-view="cotizacion">
     <div class="card">
       <div class="row"><h2 style="margin:0">Vista previa de cotización</h2>
-        <button class="btn right" onclick="exportPDFnative()">⬇️ Descargar PDF</button>
+        <button class="btn right" onclick="downloadPDF()">⬇️ Descargar PDF</button>
       </div>
       <div class="hint">Descarga como PDF para el cliente.</div>
       <div id="quoteDoc"></div>
@@ -2017,6 +2016,23 @@ function guardarCambios(){if(!hasFile){alert('Primero usa "Guardar" para crear e
   $('overlay').classList.add('on');}
 async function doGuardarCambios(){const major=((document.querySelector('input[name=verkind]:checked')||{}).value)==='mayor';const resumen=($('chg_resumen')?$('chg_resumen').value:'').trim();const nv=bumpVersion(S.proyecto.version,major);setVersion(nv);if(!Array.isArray(S.historial))S.historial=[];const d=new Date();S.historial.unshift({fecha:d.toISOString().slice(0,10),hora:d.toTimeString().slice(0,5),version:nv,resumen:resumen});closeModal();renderHistorial();renderQuote();
   const json=JSON.stringify(projectPayload(),null,2);const fname=costeoBaseName()+'.json';openedFileName=fname;let okL=false,okR=false,er=[];try{dlLocal(json,fname);okL=true;}catch(e){er.push('Local: '+e.message);}try{okR=await repoPutJSON(json,fname);}catch(e){er.push('Repositorio: '+e.message);}alert('Versión '+nv+'\n'+(okL?'✅ Local (Descargas)':'— Local')+'\n'+(okR?'✅ Repositorio':'— Repositorio')+(er.length?('\n\n'+er.join('\n')):''));}
+/* Guardado automático antes de descargar el PDF (evita perder el trabajo) */
+async function guardarRapido(){
+  syncFromInputs();
+  if(!hasFile){await guardar();return;}
+  if(!S.proyecto.version)setVersion('v1');
+  const json=JSON.stringify(projectPayload(),null,2);
+  const fname=openedFileName||(costeoBaseName()+'.json');
+  let okL=false,okR=false,er=[];
+  try{dlLocal(json,fname);okL=true;}catch(e){er.push('Local: '+e.message);}
+  try{okR=await repoPutJSON(json,fname);}catch(e){er.push('Repositorio: '+e.message);}
+  openedFileName=fname;
+  alert('💾 Trabajo guardado ('+(S.proyecto.version||'v1')+')\n'+(okL?'✅ Local (Descargas)':'— Local')+'\n'+(okR?'✅ Repositorio':'— Repositorio')+(er.length?('\n\n'+er.join('\n')):''));
+}
+async function downloadPDF(){
+  try{await guardarRapido();}catch(e){console.error(e);}
+  await exportPDFnative();
+}
 function applyLoaded(j){if(j.state){S=j.state;if(j.clients)DB_CLIENTS=j.clients;if(j.dirs){if(j.dirs.preventa)DIR.preventa=j.dirs.preventa;if(j.dirs.ejecutivos)DIR.ejecutivos=j.dirs.ejecutivos;}}else{S=j;}if(!Array.isArray(S.historial))S.historial=[];if(!S.proyecto.version)S.proyecto.version='v1';}
 async function abrirLocal(){if(window.showOpenFilePicker){try{const [h]=await window.showOpenFilePicker({types:[{description:'Proyecto Sipnology',accept:{'application/json':['.json']}}]});const file=await h.getFile();const j=JSON.parse(await file.text());applyLoaded(j);localFileHandle=h;openedFileName=h.name;hasFile=true;pushToInputs();recompute();updateSaveButtons();alert('Proyecto abierto: '+h.name);return;}catch(e){if(e&&e.name==='AbortError')return;}}$('fileInput').click();}
 function renderHistorial(){const b=$('hist_body');if(!b)return;const h=(S&&Array.isArray(S.historial))?S.historial:[];b.innerHTML=h.length?h.map((r,i)=>`<tr><td class="fitc" style="text-align:center">${esc(r.fecha||'')}</td><td class="fitc" style="text-align:center;color:#E8632A;font-weight:700">${esc(r.version||'')}</td><td class="fitc" style="text-align:center">${esc(r.hora||'')}</td><td class="l"><textarea class="ta" rows="1" data-hist="${i}" style="width:100%">${esc(r.resumen||'')}</textarea></td></tr>`).join(''):`<tr><td colspan="4" class="l" style="color:#999">Sin cambios registrados aún.</td></tr>`;
@@ -2222,7 +2238,7 @@ function fcInitDrag(){const el=$('floatCalc'),h=$('fcHead');if(!el||!h)return;le
 
 /* ============================ TABS ============================ */
 const VIEWS=[['proyecto','Registro Proyecto'],['ingenieria','Calculadora Ingeniería'],['sa','Calculadora Serv. Admin'],['materiales','Materiales y Contratos'],['comercial','Condiciones comerciales'],['resumen','Resumen Financiero'],['cotizacion','Cotización'],['tarifas','Tarifas']];
-function buildTabs(){$('tabs').innerHTML=VIEWS.map(v=>`<div class="tab" data-t="${v[0]}" onclick="showView('${v[0]}')">${v[1]}</div>`).join('');}
+function buildTabs(){$('tabs').innerHTML=VIEWS.map(v=>`<div class="tab" data-t="${v[0]}" onclick="showView('${v[0]}')">${v[1]}</div>`).join('')+`<div class="tab" onclick="repoConfig()" title="Configurar repositorio M365" style="cursor:pointer">⚙️ Config</div>`;}
 let tarifasUnlocked=false;
 function showView(v){if(v==='tarifas'&&!tarifasUnlocked){const p=prompt('Pestaña restringida. Ingresa la contraseña de administrador:');if(p!=='Sipnology123!'){if(p!==null)alert('Contraseña incorrecta.');return;}tarifasUnlocked=true;}document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active',s.dataset.view===v));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.t===v));requestAnimationFrame(growAll);}
 
