@@ -85,6 +85,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
 .rtebar button{width:24px;height:22px;border:1px solid var(--line);background:var(--chip);color:#cfd8e6;border-radius:5px;cursor:pointer;font-size:12px;padding:0;line-height:1}
 .rtebar button:hover{background:#22314f}
 .rte{min-height:34px;max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:6px;padding:5px 7px;background:#0c1730;color:#e8eefc;font-size:12px;line-height:1.35}
+.rte *{color:#e8eefc !important;background-color:transparent !important}
 .rte:focus{outline:1px solid #E8632A}
 .rte ul,.rte ol{margin:3px 0;padding-left:18px}
 #quoteDoc td .rich{white-space:normal}
@@ -724,7 +725,8 @@ function rteBar(g,i){return `<div class="rtebar"><button type="button" data-rtec
 function rteStore(g,i,html){const t=RTE_TARGETS[g];if(!t)return;const a=t.arr();if(a&&a[i])a[i][t.field]=html;}
 function rteFill(){document.querySelectorAll('.rte[data-rteg]').forEach(ed=>{const t=RTE_TARGETS[ed.dataset.rteg];if(!t)return;const a=t.arr();const i=+ed.dataset.rtei;ed.innerHTML=conceptoToHtml(a&&a[i]?a[i][t.field]:'');});}
 function bindRTE(){
-  document.querySelectorAll('.rte[data-rteg]').forEach(ed=>{ed.oninput=()=>{rteStore(ed.dataset.rteg,+ed.dataset.rtei,ed.innerHTML);renderQuote();};});
+  document.querySelectorAll('.rte[data-rteg]').forEach(ed=>{ed.oninput=()=>{rteStore(ed.dataset.rteg,+ed.dataset.rtei,ed.innerHTML);renderQuote();};
+    ed.onpaste=e=>{e.preventDefault();const t=((e.clipboardData||window.clipboardData).getData('text/plain'))||'';document.execCommand('insertText',false,t);rteStore(ed.dataset.rteg,+ed.dataset.rtei,ed.innerHTML);renderQuote();};});
   document.querySelectorAll('.rtebar button[data-rtecmd]').forEach(b=>{b.onmousedown=e=>e.preventDefault();b.onclick=()=>{const ed=b.closest('td').querySelector('.rte');if(!ed)return;ed.focus();document.execCommand(b.dataset.rtecmd,false,null);rteStore(ed.dataset.rteg,+ed.dataset.rtei,ed.innerHTML);renderQuote();};});
 }
 function profileCost(p,moneda,fx){return (CFG.profiles[p]||0)*(moneda==='MXN'?num(fx):1);}
