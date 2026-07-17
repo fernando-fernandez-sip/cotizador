@@ -241,7 +241,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
         <button class="btn sec" onclick="convertSubc()" title="Convierte el Costo Unitario entre MXN y USD">🔁 Convertir</button>
       </div>
       <table id="subc_table" style="margin-top:8px">
-        <thead><tr><th class="l">Concepto</th><th class="fit">Cantidad</th><th class="fit">Costo Unitario</th><th class="fit">Margen</th><th class="nw">Costo total</th><th class="nw">Precio total</th><th class="l">Notas</th><th></th></tr></thead>
+        <thead><tr><th class="l">Concepto</th><th class="fit">Cantidad</th><th class="fit">Costo Unitario</th><th class="fit">Margen</th><th class="fit nw">Precio unitario</th><th class="nw">Costo total</th><th class="nw">Precio total</th><th class="l">Notas</th><th></th></tr></thead>
         <tbody id="subc_body"></tbody>
       </table>
       <div style="margin-top:8px"><button class="mini add" onclick="addSubc()">＋ Agregar fila</button></div>
@@ -339,7 +339,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
       </div>
       <div class="hint">Calculadora de apoyo independiente. <b>No se refleja en el Resumen Financiero.</b> Precio = (Costo Unitario ÷ (1 − Margen)) × Cantidad.</div>
       <table id="sacalc_table" style="margin-top:8px">
-        <thead><tr><th class="l">Concepto</th><th class="fit">Cantidad</th><th class="fit">Costo Unitario</th><th class="fit">Margen</th><th class="nw">Costo total</th><th class="nw">Precio total</th><th class="l">Notas</th><th></th></tr></thead>
+        <thead><tr><th class="l">Concepto</th><th class="fit">Cantidad</th><th class="fit">Costo Unitario</th><th class="fit">Margen</th><th class="fit nw">Precio unitario</th><th class="nw">Costo total</th><th class="nw">Precio total</th><th class="l">Notas</th><th></th></tr></thead>
         <tbody id="sacalc_body"></tbody>
       </table>
       <div style="margin-top:8px"><button class="mini add" onclick="addSacalc()">＋ Agregar fila</button></div>
@@ -791,14 +791,15 @@ function compute(){
     const cost=baseUnit*num(r.cant);
     const mm=num(r.margin);
     const price=mm<1?(baseUnit/(1-mm))*num(r.cant):0;
-    scRows.push({baseUnit,cost,price}); scCost+=cost;scPrice+=price;
+    const pUnit=mm<1?baseUnit/(1-mm):0;
+    scRows.push({baseUnit,cost,price,pUnit}); scCost+=cost;scPrice+=price;
   });
   R.subc={cost:scCost,price:scPrice,rows:scRows,marg:scPrice?((scPrice-scCost)/scPrice):0};
 
   /* Calculadora Servicio Administrado (independiente, NO entra al Resumen Financiero) */
   const xac=S.sa.sacalc||{rows:[]};
   let xaCost=0,xaPrice=0; const xaRows=[];
-  (xac.rows||[]).forEach(r=>{const bu=num(r.costo);const cost=bu*num(r.cant);const mm=num(r.margin);const price=mm<1?(bu/(1-mm))*num(r.cant):0;xaRows.push({baseUnit:bu,cost,price});xaCost+=cost;xaPrice+=price;});
+  (xac.rows||[]).forEach(r=>{const bu=num(r.costo);const cost=bu*num(r.cant);const mm=num(r.margin);const price=mm<1?(bu/(1-mm))*num(r.cant):0;const pUnit=mm<1?bu/(1-mm):0;xaRows.push({baseUnit:bu,cost,price,pUnit});xaCost+=cost;xaPrice+=price;});
   R.sacalc={cost:xaCost,price:xaPrice,rows:xaRows,marg:xaPrice?((xaPrice-xaCost)/xaPrice):0};
 
   /* Propuesta Ingeniería (calculadora independiente, mismas fórmulas que Subcontratación) */
@@ -1045,6 +1046,7 @@ function renderIng(){
       <td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-subc="${i}" data-k="cant" value="${r.cant}"></td>
       <td class="fit" style="text-align:center"><input class="numw" type="text" inputmode="decimal" data-subc="${i}" data-k="costo" value="${n2(r.costo)}"></td>
       <td class="fit" style="text-align:center"><div class="pctcell"><input class="num" type="text" inputmode="decimal" data-subc="${i}" data-k="margin_pct" value="${(num(r.margin)*100).toFixed(2)}"><span>%</span></div></td>
+      <td class="calc fit tight">${n2(c.pUnit)}</td>
       <td class="cost fit tight">${n2(c.cost)}</td>
       <td class="calc fit tight">${n2(c.price)}</td>
       <td class="l"><textarea class="ta" rows="1" data-subc="${i}" data-k="nota" style="width:100%">${esc(r.nota||'')}</textarea></td>
@@ -1234,6 +1236,7 @@ function renderSA(){
         <td class="fit" style="text-align:center"><input class="num" type="text" inputmode="decimal" data-sacx="${i}" data-k="cant" value="${r.cant}"></td>
         <td class="fit" style="text-align:center"><input class="numw" type="text" inputmode="decimal" data-sacx="${i}" data-k="costo" value="${n2(r.costo)}"></td>
         <td class="fit" style="text-align:center"><div class="pctcell"><input class="num" type="text" inputmode="decimal" data-sacx="${i}" data-k="margin_pct" value="${(num(r.margin)*100).toFixed(2)}"><span>%</span></div></td>
+        <td class="calc fit tight">${n2(c.pUnit)}</td>
         <td class="cost fit tight">${n2(c.cost)}</td>
         <td class="calc fit tight">${n2(c.price)}</td>
         <td class="l"><textarea class="ta" rows="1" data-sacx="${i}" data-k="nota" style="width:100%">${esc(r.nota||'')}</textarea></td>
