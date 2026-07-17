@@ -337,7 +337,7 @@ tr.subtot td{background:#0c2033;font-weight:700}
         <div style="width:110px"><label class="f">Tipo de cambio</label><input id="sacalc_fx" type="number" step="0.01" value="20" oninput="S.sa.sacalc.fx=num(this.value)"></div>
         <button class="btn sec" onclick="convertSacalc()" title="Convierte el Costo Unitario entre MXN y USD">🔁 Convertir</button>
       </div>
-      <div class="hint">Calculadora de apoyo independiente. <b>No se refleja en el Resumen Financiero.</b> Precio = (Costo Unitario ÷ (1 − Margen)) × Cantidad.</div>
+      <div class="hint">Alimenta el rubro <b>"Soporte / Servicios Administrados"</b> del Resumen Financiero. Precio = (Costo Unitario ÷ (1 − Margen)) × Cantidad.</div>
       <table id="sacalc_table" style="margin-top:8px">
         <thead><tr><th class="l">Concepto</th><th class="fit">Cantidad</th><th class="fit">Costo Unitario</th><th class="fit">Margen</th><th class="fit nw">Precio unitario</th><th class="nw">Costo total</th><th class="nw">Precio total</th><th class="l">Notas</th><th></th></tr></thead>
         <tbody id="sacalc_body"></tbody>
@@ -895,7 +895,7 @@ function compute(){
   const streams=[
     {k:'Ingeniero Interno y PM',cost:R.ing.cost,price:R.ing.price,tc:true},
     {k:'Subcontratación / Extras',cost:R.subc.cost,price:R.subc.price,tc:true},
-    {k:'Soporte / Servicios Administrados',cost:R.sa.managedCost,price:R.sa.managedPrice},
+    {k:'Soporte / Servicios Administrados',cost:R.sacalc.cost,price:R.sacalc.price},
     {k:'Recurso en Sitio',cost:R.onsite.cost,price:R.onsite.price},
     {k:'Materiales',cost:R.mat.cost,price:R.mat.price},
     {k:'Contratos de Soporte / Renovación',cost:R.con.cost,price:R.con.price}
