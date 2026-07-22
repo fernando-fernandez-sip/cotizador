@@ -1383,12 +1383,12 @@ function renderQuote(){
   const mesaTotal=R.sacot.priceTotal;
   // Materiales <- BOM
   let matRows='',mi=1;
-  S.mat.rows.forEach((row,i)=>{const c=R.mat.matCalc[i];if(num(row.qty)>0){matRows+=`<tr><td>${esc(row.item||mi)}</td><td class="l">${esc(row.sku)}</td><td class="l">${esc(row.desc)}</td><td>${esc(row.qty)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;mi++;}});
+  S.mat.rows.forEach((row,i)=>{const c=R.mat.matCalc[i];if(num(row.qty)>0){matRows+=`<tr><td>${esc(row.item||mi)}</td><td class="l nw">${esc(row.sku)}</td><td class="l">${esc(row.desc)}</td><td>${esc(row.qty)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;mi++;}});
   if(!matRows)matRows=`<tr><td colspan="6" class="l" style="color:#999">Sin materiales</td></tr>`;
   const matTotal=R.mat.price;
   // Contratos de soporte / renovación <- Contratos
   let conRows='',ci=1;
-  S.con.rows.forEach((row,i)=>{const c=R.con.conCalc[i];if(num(row.qty)>0){conRows+=`<tr><td>${esc(row.item||ci)}</td><td class="l">${esc(row.sku)}</td><td class="l">${esc(row.desc)}</td><td>${esc(row.qty)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;ci++;}});
+  S.con.rows.forEach((row,i)=>{const c=R.con.conCalc[i];if(num(row.qty)>0){conRows+=`<tr><td>${esc(row.item||ci)}</td><td class="l nw">${esc(row.sku)}</td><td class="l">${esc(row.desc)}</td><td>${esc(row.qty)}</td><td class="nw">${n2(c.pUnit)}</td><td class="nw">${n2(c.pTot)}</td></tr>`;ci++;}});
   if(!conRows)conRows=`<tr><td colspan="6" class="l" style="color:#999">Sin contratos</td></tr>`;
   const conTotal=R.con.price;
   const subtotal=servTotal+mesaTotal+matTotal+conTotal, iva=subtotal*0.16, total=subtotal+iva;
