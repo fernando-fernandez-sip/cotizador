@@ -1527,7 +1527,7 @@ async function exportPDFnative(){
       body:body.length?body:[[{content:'Sin partidas',colSpan:head.length,styles:{halign:'left',textColor:150}}]],
       foot:[[{content:tlabel,colSpan:head.length-1,styles:{halign:'right',fontStyle:'bold'}},n2(total)]],
       theme:'grid',showFoot:'lastPage',showHead:'everyPage',
-      headStyles:{fillColor:BR,textColor:255,fontStyle:'bold',halign:'center',fontSize:7.5},
+      headStyles:{fillColor:BR,textColor:255,fontStyle:'bold',halign:'center',fontSize:7.5,overflow:'visible',valign:'middle'},
       footStyles:{fillColor:TOT,textColor:20,fontStyle:'bold',fontSize:8,halign:'right'},
       bodyStyles:{fontSize:7.5,textColor:34,valign:'top',lineColor:LN,lineWidth:0.2},
       columnStyles:cols,margin:{left:M,right:M}});
@@ -1538,9 +1538,9 @@ async function exportPDFnative(){
   const mesa=[];((S.sa.cotiz&&S.sa.cotiz.rows)||[]).forEach((r,i)=>{const c=R.sacot.rows[i];if(num(r.cant)>0)mesa.push([String(r.partida||(i+1)),htmlToText(r.desc||''),String(num(r.cant)),n2(c.pUnit),n2(c.pTot)]);});
   sect('Mesa de ayuda / Recursos en sitio',['Partida','Descripción','Cantidad','Precio unitario','Precio total'],mesa,R.sacot.priceTotal,'Total mesa de ayuda / recursos',{0:{halign:'center',cellWidth:15},1:{halign:'left'},2:{halign:'center',cellWidth:18},3:{halign:'right',cellWidth:27},4:{halign:'right',cellWidth:27}});
   const mat=[];S.mat.rows.forEach((row,i)=>{const c=R.mat.matCalc[i];if(num(row.qty)>0)mat.push([String(row.item||(i+1)),String(row.sku||''),String(row.desc||''),String(num(row.qty)),n2(c.pUnit),n2(c.pTot)]);});
-  sect('Materiales',['No. Item','No. Parte','Descripción','Cantidad','Precio unitario','Precio total'],mat,R.mat.price,'Total materiales',{0:{halign:'center',cellWidth:13},1:{halign:'left',cellWidth:25},2:{halign:'left'},3:{halign:'center',cellWidth:16},4:{halign:'right',cellWidth:24},5:{halign:'right',cellWidth:24}});
+  sect('Materiales',['No. Item','No. Parte','Descripción','Cantidad','Precio unitario','Precio total'],mat,R.mat.price,'Total materiales',{0:{halign:'center',cellWidth:13},1:{halign:'left',cellWidth:'wrap'},2:{halign:'left'},3:{halign:'center',cellWidth:16},4:{halign:'right',cellWidth:24},5:{halign:'right',cellWidth:24}});
   const con=[];S.con.rows.forEach((row,i)=>{const c=R.con.conCalc[i];if(num(row.qty)>0)con.push([String(row.item||(i+1)),String(row.sku||''),String(row.desc||''),String(num(row.qty)),n2(c.pUnit),n2(c.pTot)]);});
-  sect('Contratos de soporte / renovación',['No. Item','No. Parte','Descripción','Cantidad','Precio unitario','Precio total'],con,R.con.price,'Total contratos',{0:{halign:'center',cellWidth:13},1:{halign:'left',cellWidth:25},2:{halign:'left'},3:{halign:'center',cellWidth:16},4:{halign:'right',cellWidth:24},5:{halign:'right',cellWidth:24}});
+  sect('Contratos de soporte / renovación',['No. Item','No. Parte','Descripción','Cantidad','Precio unitario','Precio total'],con,R.con.price,'Total contratos',{0:{halign:'center',cellWidth:13},1:{halign:'left',cellWidth:'wrap'},2:{halign:'left'},3:{halign:'center',cellWidth:16},4:{halign:'right',cellWidth:24},5:{halign:'right',cellWidth:24}});
   const sub=R.prop.priceTotal+R.sacot.priceTotal+R.mat.price+R.con.price, iva=sub*0.16, tot=sub+iva;
   if(yy>ph-34){doc.addPage();yy=M;}
   doc.autoTable({startY:yy,theme:'grid',
